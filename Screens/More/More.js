@@ -5,6 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 export default function ProductFeaturesScreen() {
   const [activeTab, setActiveTab] = useState('More');
 
+  
   const features = [
     { id: 1, title: 'Procedures', icon: 'format-list-bulleted', bgColor: '#F3F0FF', iconColor: '#7C3AED' },
     { id: 2, title: 'Requests', icon: 'download', bgColor: '#ECFDF5', iconColor: '#059669' },
