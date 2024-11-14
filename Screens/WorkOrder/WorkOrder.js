@@ -6,6 +6,7 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { BottomSheet } from '@rneui/themed';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DropDownPicker from 'react-native-dropdown-picker';
+import Navigation from '../../Navigation/Navigation';
 
 export default function NewWorkOrder() {
     const navigation = useNavigation();
@@ -28,7 +29,8 @@ export default function NewWorkOrder() {
     const [isPickerVisible, setPickerVisible] = useState(false);
     const [time, setTime] = useState(new Date(0));
 
-
+    const [WorkTypeModal, SetWorkTypeModal] = useState(false)
+    const [WorktypeValue, SetWorktypeValue] = useState('Reactive')
 
     const [timePickerVisible, setTimePickerVisible] = useState(false);
     const [selectedTime, setSelectedTime] = useState(new Date());
@@ -166,6 +168,13 @@ export default function NewWorkOrder() {
         { label: 'High', color: '#cc420e', value: 3 }
     ];
 
+    WorkType = [
+        { label: "Cycle Count", value: "1" },
+        { label: "Others", value: "2" },
+        { label: "Preventive", value: "3" },
+        { label: "Reactive", value: "4" },
+    ]
+
 
     const list = [
         {
@@ -293,6 +302,9 @@ export default function NewWorkOrder() {
                 buttonStyle={styles.addButton}
                 titleStyle={styles.buttonText}
                 type="outline"
+
+
+                onPress={() => { navigation.navigate('Procedure') }}
             />
 
             {/* Priority Selector */}
@@ -468,11 +480,11 @@ export default function NewWorkOrder() {
             )}
 
 
-            <ListItem bottomDivider>
+            <ListItem bottomDivider onPress={() => { SetWorkTypeModal(true) }}>
                 <ListItem.Content>
                     <ListItem.Title>Work Type</ListItem.Title>
                 </ListItem.Content>
-                <ListItem.Subtitle>Reactive</ListItem.Subtitle>
+                <ListItem.Subtitle>{WorktypeValue}</ListItem.Subtitle>
             </ListItem>
 
             <ListItem bottomDivider>
@@ -562,6 +574,21 @@ export default function NewWorkOrder() {
                             <Icon name={item.icon} type="material" color="#1E90FF" />
                             <ListItem.Content>
                                 <ListItem.Title style={item.titleStyle}>{item.title}</ListItem.Title>
+                            </ListItem.Content>
+                        </ListItem>
+                    </View>
+                ))}
+            </BottomSheet>
+            <BottomSheet isVisible={WorkTypeModal} onBackdropPress={() => setModalVisible(false)} >
+                {WorkType.map((item, index) => (
+                    <View style={{ backgroundColor: "red", }}>
+                        <ListItem key={index} onPress={() => {
+                            SetWorktypeValue(item.label)
+                            SetWorkTypeModal(false)
+                        }} containerStyle={item.containerStyle}>
+                            <Icon name={item.icon} type="material" color="#1E90FF" />
+                            <ListItem.Content>
+                                <ListItem.Title style={item.titleStyle}>{item.label}</ListItem.Title>
                             </ListItem.Content>
                         </ListItem>
                     </View>

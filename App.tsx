@@ -8,6 +8,8 @@
 import React from 'react';
 import { StyleSheet, useColorScheme } from 'react-native';
 import Navigation from './Navigation/Navigation';
+import store from "./Store"
+import { Provider } from 'react-redux'
 
 
 
@@ -24,9 +26,9 @@ function App(): React.JSX.Element {
 
 
   return (
-    <>
+    <Provider store={store}>
       <Navigation />
-    </>
+    </Provider>
   );
 }
 

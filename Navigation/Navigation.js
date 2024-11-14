@@ -4,12 +4,17 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import OverView from '../Screens/OverView/OverView';
 import WorkOrder from '../Screens/WorkOrder/WorkOrder';
-import Asset from '../Screens/Asset/Asset';
+import Asset from '../Screens/Asset/index';
 import More from '../Screens/More/More';
 import LandingScreen from '../Screens/LandingScreen/LandingScreen';
 import { NavigationContainer } from '@react-navigation/native';
 // import { Icon } from '@expo/vector-icons';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import Procedure from '../Screens/Procedure/Procedure';
+import Options from '../Screens/Procedure/Options';
+import AssetAdd from '../Screens/Asset/AssetAdd';
+import LocationAdd from '../Screens/Asset/LocationAdd';
+
 
 export default function Navigation() {
     const Stack = createStackNavigator();
@@ -20,7 +25,11 @@ export default function Navigation() {
 
                 <Stack.Screen name="MoreScreen" component={LandingScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="Tabs" component={tabs} options={{ headerShown: false }} />
-
+                <Stack.Screen name="Procedure" component={Procedure} options={{ headerShown: false }} />
+                <Stack.Screen name="Options" component={Options} options={{ headerShown: false }} />
+                <Stack.Screen name="Assets" component={Asset} options={{ headerShown: false }} />
+                <Stack.Screen name="AssetsAdd" component={AssetAdd} options={{ headerShown: false }} />
+                <Stack.Screen name="LocationAdd" component={LocationAdd} options={{ headerShown: false }} />
             </Stack.Navigator>
         </NavigationContainer>
     )
