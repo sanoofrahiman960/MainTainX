@@ -4,34 +4,19 @@
  *
  * @format
  */
-
 import React from 'react';
 import { StyleSheet, useColorScheme } from 'react-native';
 import Navigation from './Navigation/Navigation';
-import store from "./Store"
-import { Provider } from 'react-redux'
-
-
-
-
-
-
-
-
-
-
+import store from "./Store";
+import { Provider } from 'react-redux';
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-
-
-
   return (
     <Provider store={store}>
       <Navigation />
     </Provider>
   );
 }
-
 const styles = StyleSheet.create({
   sectionContainer: {
     marginTop: 32,
