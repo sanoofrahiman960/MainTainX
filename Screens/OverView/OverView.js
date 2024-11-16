@@ -38,8 +38,8 @@ export default function LandingScreen() {
     return () => clearTimeout(timer);
   }, [navigation, scaleAnim]);
 
-  const CreateOption = ({ icon, label }) => (
-    <TouchableOpacity style={styles.createOption}>
+  const CreateOption = ({ icon, label, onPress }) => (
+    <TouchableOpacity style={styles.createOption} onPress={onPress}>
       <View style={styles.createIconContainer}>
         <Icon name={icon} size={24} color="#007AFF" />
       </View>
@@ -56,10 +56,34 @@ export default function LandingScreen() {
   ];
 
   const statusCards = [
-    { id: 1, title: 'High Priority', icon: 'alert-circle-outline', count: 3, color: '#F44336' },
-    { id: 2, title: 'Overdue', icon: 'clock-outline', count: 0, color: '#FF9800' },
-    { id: 3, title: 'Pending Approval', icon: 'alert-circle-outline', count: 5, color: '#4CAF50' },
-    { id: 4, title: 'Completed', icon: 'check-circle-outline', count: 12, color: '#2196F3' },
+    {
+      id: 1,
+      title: 'High Priority',
+      icon: 'alert-circle-outline',
+      count: 3,
+      color: '#F44336',
+    },
+    {
+      id: 2,
+      title: 'Overdue',
+      icon: 'clock-outline',
+      count: 0,
+      color: '#FF9800',
+    },
+    {
+      id: 3,
+      title: 'Pending Approval',
+      icon: 'alert-circle-outline',
+      count: 5,
+      color: '#4CAF50',
+    },
+    {
+      id: 4,
+      title: 'Completed',
+      icon: 'check-circle-outline',
+      count: 12,
+      color: '#2196F3',
+    },
   ];
 
   const renderActionButton = ({ title, icon, color }) => (
@@ -69,6 +93,15 @@ export default function LandingScreen() {
       onPress={() => {
         if (title === 'Scan Code') {
           // Implement QR code scanning functionality
+          console.log('Scan Code pressed');
+        } else if (title === 'Add') {
+          setModalVisible(true);
+        } else if (title === 'Due Today') {
+          console.log('Due Today pressed');
+          // Navigate to Due Today screen or show Due Today items
+        } else if (title === 'Support') {
+          console.log('Support pressed');
+          // Navigate to Support screen or show support options
         }
       }}
     >
@@ -80,7 +113,16 @@ export default function LandingScreen() {
   );
 
   const renderStatusCard = ({ title, icon, count, color }) => (
-    <TouchableOpacity style={[styles.statusCard, { width: cardWidth }]} key={title}>
+    <TouchableOpacity
+      style={[styles.statusCard, { width: cardWidth }]}
+      key={title}
+      onPress={() => {
+        console.log(`${title} card pressed`);
+        // Navigate to the appropriate screen based on the status card
+        // For example:
+        // navigation.navigate('WorkOrders', { filter: title });
+      }}
+    >
       <View style={[styles.statusCardIcon, { backgroundColor: color }]}>
         <Icon name={icon} size={24} color="#FFFFFF" />
       </View>
@@ -92,7 +134,8 @@ export default function LandingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View
+          style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
           <View style={styles.header}>
             <Text style={styles.name}>John Doe</Text>
             <TouchableOpacity style={styles.accountButton}>
@@ -101,7 +144,9 @@ export default function LandingScreen() {
           </View>
 
           <View style={styles.welcome}>
-            <Text style={styles.organisation}>Welcome to Organisation Name</Text>
+            <Text style={styles.organisation}>
+              Welcome to Organisation Name
+            </Text>
           </View>
 
           <View style={styles.actionButtonsContainer}>
@@ -135,30 +180,73 @@ export default function LandingScreen() {
           </View>
         </Animated.View>
       </ScrollView>
-      
+
       {/* Create Modal */}
       <Modal
         visible={isModalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
+        onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>What would you like to Create?</Text>
+              <Text style={styles.modalTitle}>
+                What would you like to Create?
+              </Text>
               <TouchableOpacity
                 onPress={() => setModalVisible(false)}
-                style={styles.closeButton}
-              >
+                style={styles.closeButton}>
                 <Icon name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
-            <CreateOption icon="clipboard-text" label="Work Order" />
-            <CreateOption icon="file-document" label="Procedure" />
-            <CreateOption icon="cube" label="Asset" />
-            <CreateOption icon="map-marker" label="Location" />
-            <CreateOption icon="cog" label="Part" />
+            <CreateOption
+              icon="clipboard-text"
+              label="Work Order"
+              onPress={() => {
+                setModalVisible(false);
+                navigation.navigate('WorkOrderAdd');
+              }}
+            />
+            <CreateOption
+              icon="file-document"
+              label="Procedure"
+              onPress={() => {
+                setModalVisible(false);
+                navigation.navigate('Procedure');
+                // Navigate to Procedure creation screen
+                // navigation.navigate('ProcedureAdd');
+              }}
+            />
+            <CreateOption
+              icon="cube"
+              label="Asset"
+              onPress={() => {
+                setModalVisible(false);
+                navigation.navigate('Assets',{tab:"Asset"});
+                // Navigate to Asset creation screen
+                // navigation.navigate('AssetAdd');
+              }}
+            />
+            <CreateOption
+              icon="map-marker"
+              label="Location"
+              onPress={() => {
+                setModalVisible(false);
+                navigation.navigate('Assets',{tab:"Location"});
+                // Navigate to Location creation screen
+                // navigation.navigate('LocationAdd');
+              }}
+            />
+            <CreateOption
+              icon="cog"
+              label="Part"
+              onPress={() => {
+                setModalVisible(false);
+                console.log('Create Part');
+                // Navigate to Part creation screen
+                // navigation.navigate('PartAdd');
+              }}
+            />
           </View>
         </View>
       </Modal>
@@ -166,8 +254,7 @@ export default function LandingScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
-      >
+        onPress={() => setModalVisible(true)}>
         <Icon name="plus" size={28} color="#FFF" />
       </TouchableOpacity>
     </SafeAreaView>

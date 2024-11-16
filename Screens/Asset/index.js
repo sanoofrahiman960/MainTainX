@@ -8,6 +8,7 @@ const Tab = createMaterialTopTabNavigator();
 
 const AssetsScreen = () => {
   const navigation = useNavigation();
+  
   return (
     <View style={styles.container}>
       {/* Content for Assets tab */}
@@ -40,8 +41,8 @@ const LocationsScreen = () => {
   );
 };
 
-const AssetsTabNavigator = () => {
-
+const AssetsTabNavigator = ({route}) => {
+  const { tab } = route.params || {}; 
   return (
     <Tab.Navigator
       screenOptions={{
@@ -51,8 +52,16 @@ const AssetsTabNavigator = () => {
         tabBarInactiveTintColor: '#000',
       }}
     >
+      {tab !=="Asset"?
+      <>
+      <Tab.Screen name="Locations" component={LocationsScreen} />
+      <Tab.Screen name="Assets" component={AssetsScreen} />
+      </>
+      :
+      <>
       <Tab.Screen name="Assets" component={AssetsScreen} />
       <Tab.Screen name="Locations" component={LocationsScreen} />
+      </>}
     </Tab.Navigator>
   );
 };

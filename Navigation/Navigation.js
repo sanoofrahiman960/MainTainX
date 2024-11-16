@@ -14,6 +14,7 @@ import Procedure from '../Screens/Procedure/Procedure';
 import Options from '../Screens/Procedure/Options';
 import AssetAdd from '../Screens/Asset/AssetAdd';
 import LocationAdd from '../Screens/Asset/LocationAdd';
+import NewWorkOrder from '../Screens/WorkOrder/WorkOrder';
 
 
 export default function Navigation() {
@@ -30,6 +31,8 @@ export default function Navigation() {
                 <Stack.Screen name="Assets" component={Asset} options={{ headerShown: false }} />
                 <Stack.Screen name="AssetsAdd" component={AssetAdd} options={{ headerShown: false }} />
                 <Stack.Screen name="LocationAdd" component={LocationAdd} options={{ headerShown: false }} />
+                <Stack.Screen name="WorkOrderAdd" component={NewWorkOrder} options={{ headerShown: false }} />
+
             </Stack.Navigator>
         </NavigationContainer>
     )

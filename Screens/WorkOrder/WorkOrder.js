@@ -491,14 +491,18 @@ export default function NewWorkOrder() {
                 <ListItem.Content>
                     <ListItem.Title>Location</ListItem.Title>
                 </ListItem.Content>
+                <TouchableOpacity onPress={()=>navigation.navigate('Assets',{tab:"Location"})}>
                 <ListItem.Subtitle>Assign Location</ListItem.Subtitle>
+                </TouchableOpacity>
             </ListItem>
 
             <ListItem bottomDivider>
                 <ListItem.Content>
                     <ListItem.Title>Asset</ListItem.Title>
                 </ListItem.Content>
+                <TouchableOpacity onPress={()=>navigation.navigate('Assets',{tab:"Asset"})}>
                 <ListItem.Subtitle>Assign Asset</ListItem.Subtitle>
+                </TouchableOpacity>
             </ListItem>
 
             <ListItem bottomDivider>
