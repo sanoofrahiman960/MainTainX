@@ -23,7 +23,6 @@ export default function Navigation() {
     return (
         <NavigationContainer>
             <Stack.Navigator>
-
                 <Stack.Screen name="MoreScreen" component={LandingScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="Tabs" component={tabs} options={{ headerShown: false }} />
                 <Stack.Screen name="Procedure" component={Procedure} options={{ headerShown: false }} />
@@ -32,7 +31,6 @@ export default function Navigation() {
                 <Stack.Screen name="AssetsAdd" component={AssetAdd} options={{ headerShown: false }} />
                 <Stack.Screen name="LocationAdd" component={LocationAdd} options={{ headerShown: false }} />
                 <Stack.Screen name="WorkOrderAdd" component={NewWorkOrder} options={{ headerShown: false }} />
-
             </Stack.Navigator>
         </NavigationContainer>
     )
@@ -85,6 +83,7 @@ const tabs = () => {
                     ),
                 }}
             />
+           
         </Tab.Navigator>
     );
 }

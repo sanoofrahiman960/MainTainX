@@ -3,6 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert 
 import { Header, Icon, Button, BottomSheet } from '@rneui/themed';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
+import { addAssets } from '../../redux/actions/locationAction';
 
 const AssetAdd = () => {
     const [assetName, setAssetName] = useState('');
@@ -17,7 +20,8 @@ const AssetAdd = () => {
     const [image, setImage] = useState(null);
     const [fileUri, setFileUri] = useState(null);
     const [ModalVisible, setModalVisible] = useState(false)
-
+    
+    const dispatch = useDispatch();
     const navigation = useNavigation();
 
     const handleSelectImage = () => {
@@ -76,14 +80,45 @@ const AssetAdd = () => {
         Alert.alert('Success', 'Asset created successfully!');
         navigation.goBack();
     };
-
+    const saveAsset = async () => {
+        if (!assetName.trim()) {
+          Alert.alert('Error', 'Please enter a location name');
+          return;
+        }
+    
+        try {
+          const newAsset = {
+            id: Date.now().toString(),
+            name: assetName,
+            description,
+            // address,
+            // Add other fields as needed
+          };
+    
+          // Save to AsyncStorage
+          const existingAssetJson = await AsyncStorage.getItem('Assets');
+          const existingAsset = existingAssetJson ? JSON.parse(existingAssetJson) : [];
+          const updatedAssets = [...existingAsset, newAsset];
+          await AsyncStorage.setItem('Assets', JSON.stringify(updatedAssets));
+    
+          // Dispatch to Redux
+          dispatch(addAssets(newAsset));
+    
+          Alert.alert('Success', 'Assets saved successfully');
+          navigation.goBack();
+        } catch (error) {
+          console.error('Error saving Assets:', error);
+          Alert.alert('Error', 'Failed to save Assets');
+        }
+      };
+    
     return (
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
             {/* Header */}
             <Header
-                leftComponent={{ text: 'Cancel', style: { color: '#007AFF' }, onPress: () => navigation.goBack() }}
+                leftComponent={{ text: 'Cancel',  onPress: () => navigation.goBack() }}
                 centerComponent={{ text: 'New Asset', style: { fontSize: 18, fontWeight: 'bold' } }}
-                rightComponent={{ text: 'Create', style: { color: '#007AFF' }, onPress: handleSubmit }}
+                rightComponent={{ text: 'Create', style: {fontWeight: 'bold'  }, onPress: saveAsset }}
             />
 
             <ScrollView contentContainerStyle={styles.container}>

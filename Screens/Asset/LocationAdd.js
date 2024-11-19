@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState ,useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,64 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import { addLocation } from '../../redux/actions/locationAction';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 
 export default function LocationAdd() {
+  const navigation = useNavigation();
+  const dispatch = useDispatch();
+  const [locationName, setLocationName] = useState('');
+  const [description, setDescription] = useState('');
+  const [address, setAddress] = useState('');
+  const Tab = createMaterialTopTabNavigator();
+
+
+  const saveLocation = async () => {
+    if (!locationName.trim()) {
+      Alert.alert('Error', 'Please enter a location name');
+      return;
+    }
+
+    try {
+      const newLocation = {
+        id: Date.now().toString(),
+        name: locationName,
+        description,
+        address,
+        // Add other fields as needed
+      };
+
+      // Save to AsyncStorage
+      const existingLocationsJson = await AsyncStorage.getItem('locations');
+      const existingLocations = existingLocationsJson ? JSON.parse(existingLocationsJson) : [];
+      const updatedLocations = [...existingLocations, newLocation];
+      await AsyncStorage.setItem('locations', JSON.stringify(updatedLocations));
+
+      // Dispatch to Redux
+      dispatch(addLocation(newLocation));
+
+      Alert.alert('Success', 'Location saved successfully');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error saving location:', error);
+      Alert.alert('Error', 'Failed to save location');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Location</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={saveLocation}>
           <Text style={styles.createButton}>CREATE</Text>
         </TouchableOpacity>
       </View>
@@ -28,6 +74,8 @@ export default function LocationAdd() {
           style={styles.nameInput}
           placeholder="Enter Location Name"
           placeholderTextColor="#999"
+          value={locationName}
+          onChangeText={setLocationName}
         />
 
         <TouchableOpacity style={styles.imageButton}>
@@ -42,6 +90,8 @@ export default function LocationAdd() {
           placeholderTextColor="#999"
           multiline
           numberOfLines={4}
+          value={description}
+          onChangeText={setDescription}
         />
 
         <Text style={styles.label}>Address</Text>
@@ -49,6 +99,8 @@ export default function LocationAdd() {
           style={styles.addressInput}
           placeholder="Address"
           placeholderTextColor="#999"
+          value={address}
+          onChangeText={setAddress}
         />
 
         <TouchableOpacity style={styles.fieldContainer}>
@@ -94,8 +146,17 @@ export default function LocationAdd() {
           </View>
         </TouchableOpacity>
       </ScrollView>
-
-      <View style={styles.bottomNav}>
+      {/* <Tab.Navigator
+      screenOptions={{
+        tabBarLabelStyle: { fontSize: 16, fontWeight: 'bold' },
+        tabBarIndicatorStyle: { backgroundColor: '#007bff' },
+        tabBarActiveTintColor: '#007bff',
+        tabBarInactiveTintColor: '#000',
+      }}
+    >
+       <Tab.Screen name="LocationAdd" component={LocationAdd} />
+      </Tab.Navigator> */}
+      {/* <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
           <Icon name="chart-box" size={24} color="#2196F3" />
           <Text style={styles.navText}>Overview</Text>
@@ -116,7 +177,7 @@ export default function LocationAdd() {
           <Icon name="menu" size={24} color="#999" />
           <Text style={styles.navText}>More</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
     </SafeAreaView>
   );
 }
