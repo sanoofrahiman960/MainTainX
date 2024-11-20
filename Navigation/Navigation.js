@@ -14,8 +14,12 @@ import Procedure from '../Screens/Procedure/Procedure';
 import Options from '../Screens/Procedure/Options';
 import AssetAdd from '../Screens/Asset/AssetAdd';
 import LocationAdd from '../Screens/Asset/LocationAdd';
+<<<<<<< HEAD
+import NewWorkOrder from '../Screens/WorkOrder/WorkOrder';
+=======
 import AddAsset from '../Screens/Asset/AddAsset';
 import Vendors from '../Screens/Vendors/Vendors';
+>>>>>>> c29c0c6 (procedure)
 
 
 export default function Navigation() {
@@ -31,7 +35,11 @@ export default function Navigation() {
                 <Stack.Screen name="Assets" component={Asset} options={{ headerShown: false }} />
                 <Stack.Screen name="AssetsAdd" component={AddAsset} options={{ headerShown: false }} />
                 <Stack.Screen name="LocationAdd" component={LocationAdd} options={{ headerShown: false }} />
+<<<<<<< HEAD
+                <Stack.Screen name="WorkOrderAdd" component={NewWorkOrder} options={{ headerShown: false }} />
+=======
                 <Stack.Screen name="Vendors" component={Vendors} options={{ headerShown: false }} />
+>>>>>>> c29c0c6 (procedure)
             </Stack.Navigator>
         </NavigationContainer>
     )
