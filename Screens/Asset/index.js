@@ -1,92 +1,13 @@
-<<<<<<< HEAD
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert ,Dimensions} from 'react-native';
-=======
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
->>>>>>> c29c0c6 (procedure)
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-<<<<<<< HEAD
-import { useSelector, useDispatch } from 'react-redux';
-import { deleteAssets, deleteLocation } from '../../redux/actions/locationAction';
-=======
 import { Searchbar, Card, Badge, FAB, Portal, Modal } from 'react-native-paper';
->>>>>>> c29c0c6 (procedure)
 
 const Tab = createMaterialTopTabNavigator();
 const windowWidth = Dimensions.get('window').width;
 
-<<<<<<< HEAD
-const AssetScreen = () => {
-  const navigation = useNavigation();
-  const dispatch = useDispatch();
-  const assets = useSelector(state => state.locations.assets);
-  const handleDeleteAsset = (locationId) => {
-    Alert.alert(
-      "Delete Assets",
-      "Are you sure you want to delete this Asset?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          onPress: () => dispatch(deleteAssets(locationId)),
-          style: "destructive"
-        }
-      ]
-    );
-  };
-
-  const renderAssetItem = ({ item }) => (
-    <View style={styles.locationItem}>
-      <TouchableOpacity
-        style={styles.locationContent}
-        onPress={() => {
-          // Navigate to location details screen
-          // navigation.navigate('LocationDetails', { locationId: item.id });
-        }}
-      >
-        <Icon name="map-marker" size={24} color="#007bff" style={styles.locationIcon} />
-        <View style={styles.locationInfo}>
-          <Text style={styles.locationName}>{item.name}</Text>
-          <Text style={styles.locationAddress} numberOfLines={1}>{item.description}</Text>
-        </View>
-        <Icon name="chevron-right" size={24} color="#999" />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteAsset(item.id)}
-      >
-        <Icon name="trash" size={20} color="#ff4444" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const EmptyAssetsScreen = () => {
-    const navigation = useNavigation();
-    
-    return (
-      <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <Icon name="folder-open" size={80} color="#007bff" />
-          <Text style={styles.emptyTitle}>How can we break it if we don't know what it is?</Text>
-          <Text style={styles.emptySubtitle}>Start adding the Assets you're in charge of maintaining</Text>
-          <TouchableOpacity>
-            <Text style={styles.learnMore}>Learn More</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity onPress={() => { navigation.navigate('AssetsAdd') }} style={styles.newAssetButton}>
-          <Text style={styles.newAssetText}>+ New Asset</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-  
-
-  return (
-    <View style={styles.container}>
-=======
 // Sample data for assets and locations
 const sampleAssets = [
   {
@@ -168,30 +89,12 @@ const AssetsScreen = () => {
         value={searchQuery}
         style={styles.searchBar}
       />
->>>>>>> c29c0c6 (procedure)
       {assets.length > 0 ? (
         <FlatList
           data={assets}
           renderItem={renderAssetItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
-<<<<<<< HEAD
-          ListHeaderComponent={
-            <Text style={styles.listHeader}>Your Assets</Text>
-          }
-        />
-      ) : (
-        <EmptyAssetsScreen />
-      )}
-      {assets.length > 0 && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('AssetsAdd')}
-        >
-          <Icon name="plus" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
-=======
         />
       ) : (
         <View style={styles.emptyState}>
@@ -206,69 +109,12 @@ const AssetsScreen = () => {
         onPress={() => navigation.navigate('AssetsAdd')}
         label="New Asset"
       />
->>>>>>> c29c0c6 (procedure)
     </View>
   );
 };
 
 const LocationsScreen = () => {
   const navigation = useNavigation();
-<<<<<<< HEAD
-  const dispatch = useDispatch();
-  const locations = useSelector(state => state.locations.locations);
-
-  const handleDeleteLocation = (locationId) => {
-    Alert.alert(
-      "Delete Location",
-      "Are you sure you want to delete this location?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          onPress: () => dispatch(deleteLocation(locationId)),
-          style: "destructive"
-        }
-      ]
-    );
-  };
-
-  const renderLocationItem = ({ item }) => (
-    <View style={styles.locationItem}>
-      <TouchableOpacity
-        style={styles.locationContent}
-        onPress={() => {
-          // Navigate to location details screen
-          // navigation.navigate('LocationDetails', { locationId: item.id });
-        }}
-      >
-        <Icon name="map-marker" size={24} color="#007bff" style={styles.locationIcon} />
-        <View style={styles.locationInfo}>
-          <Text style={styles.locationName}>{item.name}</Text>
-          <Text style={styles.locationAddress} numberOfLines={1}>{item.address}</Text>
-        </View>
-        <Icon name="chevron-right" size={24} color="#999" />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteLocation(item.id)}
-      >
-        <Icon name="trash" size={20} color="#ff4444" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const EmptyState = () => (
-    <View style={styles.emptyState}>
-      <Icon name="map-marker" size={64} color="#007bff" />
-      <Text style={styles.emptyTitle}>No locations found.</Text>
-      <Text style={styles.emptySubtitle}>Start adding locations you're in charge of.</Text>
-      <TouchableOpacity
-        style={styles.newLocationButton}
-        onPress={() => navigation.navigate('LocationAdd')}
-      >
-        <Text style={styles.newLocationText}>Add New Location</Text>
-      </TouchableOpacity>
-=======
   const [searchQuery, setSearchQuery] = useState('');
   const [locations, setLocations] = useState(sampleLocations);
 
@@ -325,7 +171,6 @@ const LocationsScreen = () => {
         onPress={() => navigation.navigate('LocationAdd')}
         label="New Location"
       />
->>>>>>> c29c0c6 (procedure)
     </View>
   );
 
@@ -356,12 +201,7 @@ const LocationsScreen = () => {
   );
 };
 
-<<<<<<< HEAD
-const AssetsTabNavigator = ({route}) => {
-  const { tab } = route.params || {}; 
-=======
 const AssetsTabNavigator = () => {
->>>>>>> c29c0c6 (procedure)
   return (
     <Tab.Navigator
       screenOptions={{
