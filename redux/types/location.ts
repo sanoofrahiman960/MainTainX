@@ -9,5 +9,5 @@ export interface Location {
     id: string;
     name: string;
     description?: string;
-    // Add any other properties your location might have
+   
   }

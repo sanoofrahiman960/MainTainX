@@ -9,11 +9,14 @@ import { StyleSheet, useColorScheme } from 'react-native';
 import Navigation from './Navigation/Navigation';
 import store from "./Store";
 import { Provider } from 'react-redux';
+import { Provider as PaperProvider } from 'react-native-paper';
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   return (
     <Provider store={store}>
-      <Navigation />
+        <PaperProvider>
+        <Navigation />
+      </PaperProvider>
     </Provider>
   );
 }
