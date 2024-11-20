@@ -1,492 +1,785 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Modal, TouchableOpacity } from 'react-native';
-import { Header, Input, Button, Text, Icon, ListItem, ButtonGroup } from 'react-native-elements';
+import { View, StyleSheet, ScrollView, Image, Modal, TouchableOpacity, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { BottomSheet } from '@rneui/themed';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import DropDownPicker from 'react-native-dropdown-picker';
-import Navigation from '../../Navigation/Navigation';
+import {
+    Provider as PaperProvider,
+    Appbar,
+    TextInput,
+    Button,
+    List,
+    Divider,
+    RadioButton,
+    Surface,
+    Portal,
+    Dialog,
+    SegmentedButtons,
+    Menu,
+    IconButton,
+    Card,
+} from 'react-native-paper';
+import { format } from 'date-fns';
 
 export default function NewWorkOrder() {
     const navigation = useNavigation();
-
-    const [open, setOpen] = useState(false);
-    const [value, setValue] = useState(null);
-    const [items, setItems] = useState([
-        { label: 'Daily', value: 'daily' },
-        { label: 'Weekly', value: 'weekly' },
-        { label: 'Monthly', value: 'monthly' },
-        { label: 'Yearly', value: 'yearly' },
-    ]);
-    // Define state variables for each input field with initial values
-    const [task, setTask] = useState('Fix broken equipment');
-    const [description, setDescription] = useState('Replace worn-out parts and check for alignment issues.');
-    const [priorityIndex, setPriorityIndex] = useState(0); // Index for selected priority
+    const [task, setTask] = useState('');
+    const [description, setDescription] = useState('');
+    const [priorityIndex, setPriorityIndex] = useState(0);
     const [imageUri, setImageUri] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
-    const [estimatedTime, setEstimatedTime] = useState("1h 0m");
-    const [isPickerVisible, setPickerVisible] = useState(false);
-    const [time, setTime] = useState(new Date(0));
+    const [showEstimatedTimePicker, setShowEstimatedTimePicker] = useState(false);
+    const [estimatedTime, setEstimatedTime] = useState(new Date());
+    const [attachments, setAttachments] = useState([]);
 
-    const [WorkTypeModal, SetWorkTypeModal] = useState(false)
-    const [WorktypeValue, SetWorktypeValue] = useState('Reactive')
+    // New state variables for additional fields
+    const [workType, setWorkType] = useState('');
+    const [assignedTo, setAssignedTo] = useState('');
+    const [location, setLocation] = useState('');
+    const [asset, setAsset] = useState('');
+    const [categories, setCategories] = useState([]);
+    const [vendors, setVendors] = useState([]);
+    
+    // Menu visibility states
+    const [showWorkTypeMenu, setShowWorkTypeMenu] = useState(false);
+    const [showCategoriesMenu, setShowCategoriesMenu] = useState(false);
+    const [showVendorsMenu, setShowVendorsMenu] = useState(false);
+    const [showAddCategory, setShowAddCategory] = useState(false);
+    const [showIconSelector, setShowIconSelector] = useState(false);
+    const [newCategory, setNewCategory] = useState('');
+    const [newCategoryIcon, setNewCategoryIcon] = useState('');
 
-    const [timePickerVisible, setTimePickerVisible] = useState(false);
-    const [selectedTime, setSelectedTime] = useState(new Date());
-    const [timePickerVisibleStart, settimePickerVisibleStart] = useState(false);
-    const [timePickerVisibleDue, settimePickerVisibleDue] = useState(false);
-
-    const [startDate, setStartDate] = useState(new Date());
-    const [startTime, setStartTime] = useState(new Date());
-    const [dueDate, setDueDate] = useState(new Date());
-    const [dueTime, setDueTime] = useState(new Date());
-
-    // Control visibility of DateTimePicker modals
-    const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
-    const [isStartTimePickerVisible, setStartTimePickerVisible] = useState(false);
-    const [isDueDatePickerVisible, setDueDatePickerVisible] = useState(false);
-    const [isDueTimePickerVisible, setDueTimePickerVisible] = useState(false);
-
-    // Handler to open picker modal
-    const [recurrenceOpen, setRecurrenceOpen] = useState(false);
-    const [recurrenceValue, setRecurrenceValue] = useState(null);
-    const [recurrenceItems, setRecurrenceItems] = useState([
-        { label: 'Daily', value: 'daily' },
-        { label: 'Weekly', value: 'weekly' },
-        { label: 'Monthly', value: 'monthly' },
-        { label: 'Yearly', value: 'yearly' },
+    // Sample data (replace with actual data from your backend)
+    const workTypes = ['Preventive', 'Reactive', 'Others', 'Cycle Count'];
+    const [categoryOptions, setCategoryOptions] = useState([
+        { id: '1', label: 'Damage', icon: 'alert-circle' },
+        { id: '2', label: 'Electrical', icon: 'flash' },
+        { id: '3', label: 'Plumbing', icon: 'water-pump' },
+        { id: '4', label: 'Mechanical', icon: 'wrench' },
+        { id: '5', label: 'General', icon: 'tools' }
     ]);
+    const vendorOptions = ['Vendor A', 'Vendor B', 'Vendor C', 'Vendor D'];
 
-    const [dayOpen, setDayOpen] = useState(false);
-    const [dayValue, setDayValue] = useState([]);
-    const days = [
-        { label: 'Sunday', value: 'sunday' },
-        { label: 'Monday', value: 'monday' },
-        { label: 'Tuesday', value: 'tuesday' },
-        { label: 'Wednesday', value: 'wednesday' },
-        { label: 'Thursday', value: 'thursday' },
-        { label: 'Friday', value: 'friday' },
-        { label: 'Saturday', value: 'saturday' },
-    ];
-
-    const [weekOpen, setWeekOpen] = useState(false);
-    const [weekValue, setWeekValue] = useState([]);
-    const weeks = [
-        { label: '1st Week', value: '1' },
-        { label: '2nd Week', value: '2' },
-        { label: '3rd Week', value: '3' },
-        { label: '4th Week', value: '4' },
-    ];
-
-    const [monthOpen, setMonthOpen] = useState(false);
-    const [monthValue, setMonthValue] = useState([]);
-    const months = [
-        { label: 'January', value: 'january' },
-        { label: 'February', value: 'february' },
-        { label: 'March', value: 'march' },
-        { label: 'April', value: 'april' },
-        { label: 'May', value: 'may' },
-        { label: 'June', value: 'june' },
-        { label: 'July', value: 'july' },
-        { label: 'August', value: 'august' },
-        { label: 'September', value: 'september' },
-        { label: 'October', value: 'october' },
-        { label: 'November', value: 'november' },
-        { label: 'December', value: 'december' },
-    ];
-
-    const [yearOpen, setYearOpen] = useState(false);
-    const [yearValue, setYearValue] = useState([]);
-    const years = Array.from({ length: 10 }, (_, i) => ({
-        label: `${new Date().getFullYear() + i}`,
-        value: `${new Date().getFullYear() + i}`
-    }));
-
-
-
-
-    // Handler to update time and close picker
-    const handleConfirm = (event, selectedTime) => {
-        setPickerVisible(false);
-        if (selectedTime) {
-            setTime(selectedTime);
-            let hours = selectedTime.getHours();
-            let minutes = selectedTime.getMinutes();
-
-            // Pad hours to 3 digits if necessary
-            const formattedHours = hours.toString().padStart(3, '0'); // Ensures 3 digits (e.g., 005, 123, 1000)
-            const formattedMinutes = minutes.toString().padStart(2, '0');
-            setEstimatedTime(`${formattedHours}h ${formattedMinutes}m`);
-        }
-    };
-
-    const handleTimeChange = (event, selectedDate) => {
-        const currentDate = selectedDate || selectedTime;
-        setTimePickerVisible(false);
-        setSelectedTime(currentDate);
-        const hours = currentDate.getHours();
-        const minutes = currentDate.getMinutes();
-        setEstimatedTime(`${hours}h ${minutes}m`);
-    };
-
-
-    const handleStartDateChange = (event, selectedDate) => {
-        setStartDatePickerVisible(false);
-        if (selectedDate) {
-            setStartDate(selectedDate);
-            setStartTimePickerVisible(true);  // Show time picker after date is selected
-        }
-    };
-
-    const handleStartTimeChange = (event, selectedTime) => {
-        setStartTimePickerVisible(false);
-        if (selectedTime) setStartTime(selectedTime);
-    };
-
-    const handleDueDateChange = (event, selectedDate) => {
-        setDueDatePickerVisible(false);
-        if (selectedDate) {
-            setDueDate(selectedDate);
-            setDueTimePickerVisible(true);  // Show time picker after date is selected
-        }
-    };
-
-    const handleDueTimeChange = (event, selectedTime) => {
-        setDueTimePickerVisible(false);
-        if (selectedTime) setDueTime(selectedTime);
-    };
-
-
-
-
-    // Priority options with colors and values
+    // Priority options
     const priorities = [
-        { label: 'None', color: '#1E90FF', value: 0 },
-        { label: 'Low', color: '#89e089', value: 1 },
-        { label: 'Medium', color: '#e0cc60', value: 2 },
-        { label: 'High', color: '#cc420e', value: 3 }
+        { label: 'Low', value: 0, color: '#4CAF50' },
+        { label: 'Medium', value: 1, color: '#FFC107' },
+        { label: 'High', value: 2, color: '#F44336' },
+        { label: 'Critical', value: 3, color: '#800000' }
     ];
 
-    WorkType = [
-        { label: "Cycle Count", value: "1" },
-        { label: "Others", value: "2" },
-        { label: "Preventive", value: "3" },
-        { label: "Reactive", value: "4" },
-    ]
-
-
-    const list = [
-        {
-            title: 'My Photos',
-            onPress: () => {
-                // Handle opening photo gallery
-                handleImagePicker()
-                // modalVisible(false);
-            },
-            icon: 'photo-library'
-        },
-        {
-            title: 'Camera',
-            onPress: () => {
-                handleTakePhoto()
-
-                // modalVisible(false);
-            },
-            icon: 'camera-alt'
-        },
-        {
-            title: 'Cancel',
-            onPress: () => modalVisible(false),
-            containerStyle: { backgroundColor: '#f5f5f5', },
-            titleStyle: { color: 'red' },
-            icon: 'close'
-        },
+    // Available icons for categories
+    const availableIcons = [
+        { name: 'alert-circle', label: 'Alert' },
+        { name: 'flash', label: 'Electrical' },
+        { name: 'water-pump', label: 'Plumbing' },
+        { name: 'wrench', label: 'Wrench' },
+        { name: 'tools', label: 'Tools' },
+        { name: 'hammer', label: 'Hammer' },
+        { name: 'screwdriver', label: 'Screwdriver' },
+        { name: 'air-conditioner', label: 'AC' },
+        { name: 'fan', label: 'Fan' },
+        { name: 'lightbulb', label: 'Light' },
+        { name: 'pipe', label: 'Pipe' },
+        { name: 'valve', label: 'Valve' },
+        { name: 'engine', label: 'Engine' },
+        { name: 'cog', label: 'Gear' },
+        { name: 'fire', label: 'Fire' }
     ];
 
-
-    const handleImagePicker = () => {
+    // Function to handle file/photo attachments
+    const handleAttachment = (type) => {
         const options = {
-            mediaType: 'photo',
-            quality: 1,
+            mediaType: type === 'photo' ? 'photo' : 'mixed',
+            quality: 0.8,
+            selectionLimit: 0,
         };
 
-        launchImageLibrary(options, (response) => {
-            if (response.didCancel) {
-                console.log('User cancelled image picker');
-            } else if (response.errorMessage) {
-                console.error('ImagePicker Error: ', response.errorMessage);
-            } else {
-                const uri = response.assets[0].uri;
-                setImageUri(uri);
-                setModalVisible(false); // Close modal after selection
+        const launcher = type === 'photo' ? launchCamera : launchImageLibrary;
+        launcher(options, (response) => {
+            if (!response.didCancel && !response.error) {
+                const newAttachments = response.assets.map(asset => ({
+                    ...asset,
+                    type: type === 'photo' ? 'photo' : 'file'
+                }));
+                setAttachments([...attachments, ...newAttachments]);
             }
         });
     };
 
-    // Function to handle taking a new photo
-    const handleTakePhoto = () => {
-        const options = {
-            mediaType: 'photo',
-            quality: 1,
-        };
-
-        launchCamera(options, (response) => {
-            if (response.didCancel) {
-                console.log('User cancelled camera');
-            } else if (response.errorMessage) {
-                console.error('Camera Error: ', response.errorMessage);
-            } else {
-                const uri = response.assets[0].uri;
-                setImageUri(uri);
-                setModalVisible(false); // Close modal after taking a photo
-            }
-        });
+    // Function to remove attachment
+    const removeAttachment = (index) => {
+        const newAttachments = [...attachments];
+        newAttachments.splice(index, 1);
+        setAttachments(newAttachments);
     };
 
+    // Recurrence States
+    const [recurrenceType, setRecurrenceType] = useState(null);
+    const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+    const [selectedDays, setSelectedDays] = useState([]);
+    const [monthDay, setMonthDay] = useState(1);
+    const [showRecurrenceDialog, setShowRecurrenceDialog] = useState(false);
+    const [recurrenceEndDate, setRecurrenceEndDate] = useState(new Date());
+    const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
+    // Date States
+    const [startDate, setStartDate] = useState(new Date());
+    const [dueDate, setDueDate] = useState(new Date());
+    const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+    const [showDueDatePicker, setShowDueDatePicker] = useState(false);
 
+    const weekDays = [
+        { label: 'Sun', value: 'SUN' },
+        { label: 'Mon', value: 'MON' },
+        { label: 'Tue', value: 'TUE' },
+        { label: 'Wed', value: 'WED' },
+        { label: 'Thu', value: 'THU' },
+        { label: 'Fri', value: 'FRI' },
+        { label: 'Sat', value: 'SAT' },
+    ];
 
+    const handleRecurrenceTypeChange = (type) => {
+        setRecurrenceType(type);
+        setRecurrenceInterval(1);
+        setSelectedDays([]);
+        setMonthDay(1);
+    };
 
+    const generateRecurringDates = () => {
+        if (!recurrenceType) return [];
 
+        const dates = [];
+        let currentDate = new Date(startDate);
+
+        while (currentDate <= recurrenceEndDate) {
+            switch (recurrenceType) {
+                case 'daily':
+                    if (selectedDays.length === 0) {
+                        dates.push(new Date(currentDate));
+                        currentDate.setDate(currentDate.getDate() + recurrenceInterval);
+                    } else {
+                        if (selectedDays.includes(format(currentDate, 'EEE').toUpperCase())) {
+                            dates.push(new Date(currentDate));
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                    break;
+
+                case 'weekly':
+                    dates.push(new Date(currentDate));
+                    currentDate.setDate(currentDate.getDate() + (recurrenceInterval * 7));
+                    break;
+
+                case 'monthly':
+                    if (currentDate.getDate() === monthDay) {
+                        dates.push(new Date(currentDate));
+                    }
+                    currentDate.setMonth(currentDate.getMonth() + recurrenceInterval);
+                    currentDate.setDate(monthDay);
+                    break;
+
+                case 'yearly':
+                    dates.push(new Date(currentDate));
+                    currentDate.setFullYear(currentDate.getFullYear() + recurrenceInterval);
+                    break;
+            }
+        }
+
+        return dates;
+    };
+
+    const RecurrenceDialog = () => (
+        <Portal>
+            <Dialog visible={showRecurrenceDialog} onDismiss={() => setShowRecurrenceDialog(false)}>
+                <Dialog.Title>Set Recurrence</Dialog.Title>
+                <Dialog.Content>
+                    <SegmentedButtons
+                        value={recurrenceType}
+                        onValueChange={handleRecurrenceTypeChange}
+                        buttons={[
+                            { value: 'daily', label: 'Daily' },
+                            { value: 'weekly', label: 'Weekly' },
+                            { value: 'monthly', label: 'Monthly' },
+                            { value: 'yearly', label: 'Yearly' },
+                        ]}
+                    />
+                    
+                    {recurrenceType && (
+                        <Surface style={styles.recurrenceOptions} elevation={0}>
+                            {/* Interval Selection */}
+                            <Text variant="bodyLarge">Repeat every:</Text>
+                            <View style={styles.intervalContainer}>
+                                <TextInput
+                                    mode="outlined"
+                                    keyboardType="number-pad"
+                                    value={recurrenceInterval.toString()}
+                                    onChangeText={(text) => setRecurrenceInterval(parseInt(text) || 1)}
+                                    style={styles.intervalInput}
+                                />
+                                <Text variant="bodyLarge" style={styles.intervalLabel}>
+                                    {recurrenceType === 'daily' ? 'day(s)' :
+                                     recurrenceType === 'weekly' ? 'week(s)' :
+                                     recurrenceType === 'monthly' ? 'month(s)' : 'year(s)'}
+                                </Text>
+                            </View>
+
+                            {/* Daily specific options */}
+                            {recurrenceType === 'daily' && (
+                                <View style={styles.daysContainer}>
+                                    <Text variant="bodyLarge">Or select specific days:</Text>
+                                    <View style={styles.daysGrid}>
+                                        {weekDays.map((day) => (
+                                            <Button
+                                                key={day.value}
+                                                mode={selectedDays.includes(day.value) ? 'contained' : 'outlined'}
+                                                onPress={() => {
+                                                    setSelectedDays(
+                                                        selectedDays.includes(day.value)
+                                                            ? selectedDays.filter(d => d !== day.value)
+                                                            : [...selectedDays, day.value]
+                                                    );
+                                                }}
+                                                style={styles.dayButton}
+                                            >
+                                                {day.label}
+                                            </Button>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Monthly specific options */}
+                            {recurrenceType === 'monthly' && (
+                                <View style={styles.monthDayContainer}>
+                                    <Text variant="bodyLarge">On day:</Text>
+                                    <TextInput
+                                        mode="outlined"
+                                        keyboardType="number-pad"
+                                        value={monthDay.toString()}
+                                        onChangeText={(text) => {
+                                            const day = parseInt(text) || 1;
+                                            setMonthDay(Math.min(Math.max(day, 1), 31));
+                                        }}
+                                        style={styles.monthDayInput}
+                                    />
+                                </View>
+                            )}
+
+                            {/* End Date Selection */}
+                            <Button
+                                mode="outlined"
+                                onPress={() => setShowEndDatePicker(true)}
+                                style={styles.endDateButton}
+                            >
+                                End Date: {format(recurrenceEndDate, 'MMM d, yyyy')}
+                            </Button>
+                        </Surface>
+                    )}
+                </Dialog.Content>
+                <Dialog.Actions>
+                    <Button onPress={() => setShowRecurrenceDialog(false)}>Cancel</Button>
+                    <Button onPress={() => {
+                        setShowRecurrenceDialog(false);
+                        // Additional logic to save recurrence settings
+                    }}>Save</Button>
+                </Dialog.Actions>
+            </Dialog>
+        </Portal>
+    );
 
     return (
-        <ScrollView style={styles.container}>
-            {/* Header */}
-            <Header
-                leftComponent={{ text: 'Cancel', style: { color: '#1E90FF' }, onPress: () => navigation.goBack() }}
-                centerComponent={{ text: 'New Work Order', style: { color: '#000', fontSize: 18, fontWeight: 'bold' } }}
-                rightComponent={{ text: 'Create', style: { color: '#1E90FF' }, onPress: () => { } }}
-                backgroundColor="transparent"
-            />
+        <PaperProvider>
+            <ScrollView style={styles.scrollView}>
+                <Appbar.Header>
+                    <Appbar.BackAction onPress={() => navigation.goBack()} />
+                    <Appbar.Content title="New Work Order" />
+                    <Appbar.Action icon="check" onPress={() => {
+                        // Handle work order creation
+                        const dates = generateRecurringDates();
+                        console.log('Generated dates:', dates);
+                        navigation.goBack();
+                    }} />
+                </Appbar.Header>
 
-            {/* Input Fields */}
-            <Input
-                placeholder="What needs to be done?"
-                placeholderTextColor="#B0B0B0"
-                inputContainerStyle={styles.inputContainer}
-                value={task}
-                onChangeText={setTask}
-            />
+                <Card style={styles.card}>
+                    <Card.Content>
+                        <TextInput
+                            label="Task"
+                            value={task}
+                            onChangeText={setTask}
+                            mode="outlined"
+                            style={styles.input}
+                        />
 
-            {/* Add Pictures Button */}
-            <Button
-                title="Add or take pictures"
-                icon={<Icon name="camera" type="font-awesome" color="#1E90FF" />}
-                buttonStyle={styles.addButton}
-                titleStyle={styles.buttonText}
-                type="outline"
-                onPress={() => setModalVisible(true)} // Open modal
-            />
+                        <TextInput
+                            label="Description"
+                            value={description}
+                            onChangeText={setDescription}
+                            mode="outlined"
+                            multiline
+                            numberOfLines={3}
+                            style={styles.input}
+                        />
 
-            {imageUri && (
-                <View style={styles.imageContainer}>
-                    <Image source={{ uri: imageUri }} style={styles.image} />
-                </View>
-            )}
+                        <List.Item
+                            title="Work Type"
+                            description={workType || "Select work type"}
+                            onPress={() => setShowWorkTypeMenu(true)}
+                            right={props => <List.Icon {...props} icon="chevron-right" />}
+                        />
+                        <Divider style={styles.divider} />
 
-            {/* Description Field */}
-            <Text style={styles.label}>Description</Text>
-            <Input
-                placeholder="Add a description"
-                placeholderTextColor="#B0B0B0"
-                multiline
-                inputContainerStyle={styles.descriptionContainer}
-                value={description}
-                onChangeText={setDescription}
-            />
-            <Text style={styles.label}>Procedure</Text>
-            <Button
-                title="Add Procedure"
-                icon={<Icon name="list" type="font-awesome" color="#1E90FF" />}
-                buttonStyle={styles.addButton}
-                titleStyle={styles.buttonText}
-                type="outline"
+                        <TextInput
+                            label="Assign To"
+                            value={assignedTo}
+                            onChangeText={setAssignedTo}
+                            mode="outlined"
+                            style={styles.input}
+                        />
 
+                        <TextInput
+                            label="Location"
+                            value={location}
+                            onChangeText={setLocation}
+                            mode="outlined"
+                            style={styles.input}
+                        />
 
-                onPress={() => { navigation.navigate('Procedure') }}
-            />
+                        <TextInput
+                            label="Asset"
+                            value={asset}
+                            onChangeText={setAsset}
+                            mode="outlined"
+                            style={styles.input}
+                        />
 
-            {/* Priority Selector */}
-            <Text style={styles.label}>Priority</Text>
-            <ButtonGroup
-                buttons={priorities.map(p => p.label)}
-                selectedIndex={priorityIndex}
-                onPress={(index) => setPriorityIndex(index)}
-                containerStyle={styles.buttonGroup}
-                selectedButtonStyle={{ backgroundColor: priorities[priorityIndex].color }}
-                selectedTextStyle={styles.selectedText}
-            />
+                        <List.Item
+                            title="Categories"
+                            description={categories.length > 0 ? 
+                                categoryOptions
+                                    .filter(cat => categories.includes(cat.label))
+                                    .map(cat => cat.label)
+                                    .join(', ') 
+                                : "Select categories"
+                            }
+                            onPress={() => setShowCategoriesMenu(true)}
+                            right={props => (
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    {categories.length > 0 && (
+                                        <View style={styles.categoryIconsContainer}>
+                                            {categoryOptions
+                                                .filter(cat => categories.includes(cat.label))
+                                                .slice(0, 3)
+                                                .map((cat, index) => (
+                                                    <List.Icon 
+                                                        key={cat.id} 
+                                                        icon={cat.icon} 
+                                                        style={styles.categoryIcon}
+                                                    />
+                                                ))
+                                            }
+                                            {categories.length > 3 && (
+                                                <Text style={styles.moreCategories}>
+                                                    +{categories.length - 3}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    )}
+                                    <List.Icon {...props} icon="chevron-right" />
+                                </View>
+                            )}
+                        />
+                        <Divider style={styles.divider} />
 
-            {/* List of other fields */}
+                        <List.Item
+                            title="Vendors"
+                            description={vendors.length > 0 ? vendors.join(', ') : "Add vendors"}
+                            onPress={() => setShowVendorsMenu(true)}
+                            right={props => <List.Icon {...props} icon="chevron-right" />}
+                        />
+                        <Divider style={styles.divider} />
 
+                        <Text variant="titleMedium" style={styles.sectionTitle}>Priority</Text>
+                        <View style={styles.priorityContainer}>
+                            {priorities.map((priority, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[
+                                        styles.priorityButton,
+                                        { backgroundColor: priority.color },
+                                        priorityIndex === priority.value && styles.priorityButtonSelected
+                                    ]}
+                                    onPress={() => setPriorityIndex(priority.value)}
+                                >
+                                    <Text style={[
+                                        styles.priorityText,
+                                        priorityIndex === priority.value && styles.priorityTextSelected
+                                    ]}>
+                                        {priority.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
 
-            {/* <ListItem bottomDivider onPress={handleEstimatedTimePress}>
-                <ListItem.Content>
-                    <ListItem.Title>Estimated Time</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>{estimatedTime}</ListItem.Subtitle>
-            </ListItem> */}
-            <ListItem bottomDivider onPress={() => setTimePickerVisible(true)}>
-                <ListItem.Content>
-                    <ListItem.Title>Estimated Time</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>{estimatedTime}</ListItem.Subtitle>
-            </ListItem>
+                        <List.Item
+                            title="Estimated Time"
+                            description={format(estimatedTime, 'hh:mm a')}
+                            onPress={() => setShowEstimatedTimePicker(true)}
+                            right={props => <List.Icon {...props} icon="clock-outline" />}
+                        />
+                        <Divider style={styles.divider} />
 
-            <ListItem bottomDivider>
-                <ListItem.Content>
-                    <ListItem.Title>Assign to</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>Choose</ListItem.Subtitle>
-            </ListItem>
+                        <List.Item
+                            title="Attachments"
+                            description={`${attachments.length} items attached`}
+                            right={props => (
+                                <View style={{ flexDirection: 'row' }}>
+                                    <IconButton
+                                        icon="camera"
+                                        onPress={() => handleAttachment('photo')}
+                                    />
+                                    <IconButton
+                                        icon="file-plus"
+                                        onPress={() => handleAttachment('file')}
+                                    />
+                                </View>
+                            )}
+                        />
 
+                        {attachments.length > 0 && (
+                            <Card style={styles.card}>
+                                <Card.Content>
+                                    {attachments.map((attachment, index) => (
+                                        <View key={index}>
+                                            {attachment.type === 'photo' ? (
+                                                <View style={styles.attachmentItem}>
+                                                    <Image
+                                                        source={{ uri: attachment.uri }}
+                                                        style={styles.attachmentImage}
+                                                    />
+                                                    <IconButton
+                                                        icon="delete"
+                                                        onPress={() => removeAttachment(index)}
+                                                    />
+                                                </View>
+                                            ) : (
+                                                <List.Item
+                                                    title={attachment.fileName || `File ${index + 1}`}
+                                                    description={`${Math.round(attachment.fileSize / 1024)} KB`}
+                                                    left={props => <List.Icon {...props} icon="file" />}
+                                                    right={props => (
+                                                        <IconButton
+                                                            icon="delete"
+                                                            onPress={() => removeAttachment(index)}
+                                                        />
+                                                    )}
+                                                />
+                                            )}
+                                            {index < attachments.length - 1 && <Divider />}
+                                        </View>
+                                    ))}
+                                </Card.Content>
+                            </Card>
+                        )}
 
+                        <List.Item
+                            title="Recurrence"
+                            description={recurrenceType ? `${recurrenceInterval} ${recurrenceType}(s)` : 'Not set'}
+                            onPress={() => setShowRecurrenceDialog(true)}
+                            right={props => (
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    {recurrenceType && (
+                                        <IconButton
+                                            {...props}
+                                            icon="close"
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                setRecurrenceType(null);
+                                                setRecurrenceInterval(1);
+                                                setSelectedDays([]);
+                                                setMonthDay(1);
+                                                setRecurrenceEndDate(new Date());
+                                            }}
+                                        />
+                                    )}
+                                    <List.Icon {...props} icon="calendar-range" />
+                                </View>
+                            )}
+                        />
+                        <Divider style={styles.divider} />
 
-            <ListItem bottomDivider onPress={() => setStartDatePickerVisible(true)}>
-                <ListItem.Content>
-                    <ListItem.Title>Start Date & Time</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>
-                    {`${startDate.toLocaleDateString()} ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`}
-                </ListItem.Subtitle>
-            </ListItem>
+                        <List.Item
+                            title="Start Date"
+                            description={format(startDate, 'MMM d, yyyy')}
+                            onPress={() => setShowStartDatePicker(true)}
+                            right={props => <List.Icon {...props} icon="calendar-range" />}
+                        />
+                        <Divider style={styles.divider} />
 
-            <ListItem bottomDivider onPress={() => setDueDatePickerVisible(true)}>
-                <ListItem.Content>
-                    <ListItem.Title>Due Date & Time</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>
-                    {`${dueDate.toLocaleDateString()} ${dueTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`}
-                </ListItem.Subtitle>
-            </ListItem>
+                        <List.Item
+                            title="Due Date"
+                            description={format(dueDate, 'MMM d, yyyy')}
+                            onPress={() => setShowDueDatePicker(true)}
+                            right={props => <List.Icon {...props} icon="calendar-range" />}
+                        />
+                        <Divider style={styles.divider} />
 
-            {/* Render DateTimePicker modals */}
-            {isStartDatePickerVisible && (
-                <DateTimePicker
-                    value={startDate}
-                    mode="date"
-                    display="default"
-                    onChange={handleStartDateChange}
-                />
-            )}
-            {isStartTimePickerVisible && (
-                <DateTimePicker
-                    value={startTime}
-                    mode="time"
-                    display="default"
-                    onChange={handleStartTimeChange}
-                />
-            )}
-            {isDueDatePickerVisible && (
-                <DateTimePicker
-                    value={dueDate}
-                    mode="date"
-                    display="default"
-                    onChange={handleDueDateChange}
-                />
-            )}
-            {isDueTimePickerVisible && (
-                <DateTimePicker
-                    value={dueTime}
-                    mode="time"
-                    display="default"
-                    onChange={handleDueTimeChange}
-                />
-            )}
+                        <List.Item
+                            title="Add Photo"
+                            description={imageUri ? "Photo added" : "Take or choose a photo"}
+                            onPress={() => setModalVisible(true)}
+                            right={props => <List.Icon {...props} icon="camera" />}
+                        />
+                    </Card.Content>
+                </Card>
 
+                {/* Image Picker Modal */}
+                <Portal>
+                    <Dialog visible={modalVisible} onDismiss={() => setModalVisible(false)}>
+                        <Dialog.Title>Add Photo</Dialog.Title>
+                        <Dialog.Content>
+                            <Button
+                                icon="camera"
+                                mode="contained"
+                                onPress={() => {
+                                    launchCamera({
+                                        mediaType: 'photo',
+                                        quality: 0.8,
+                                    }, (response) => {
+                                        if (response.didCancel) {
+                                            console.log('User cancelled image picker');
+                                        } else if (response.error) {
+                                            console.log('ImagePicker Error: ', response.error);
+                                        } else {
+                                            setImageUri(response.assets[0].uri);
+                                        }
+                                        setModalVisible(false);
+                                    });
+                                }}
+                                style={{ marginVertical: 8 }}
+                            >
+                                Take Photo
+                            </Button>
+                            <Button
+                                icon="image"
+                                mode="contained"
+                                onPress={() => {
+                                    launchImageLibrary({
+                                        mediaType: 'photo',
+                                        quality: 0.8,
+                                    }, (response) => {
+                                        if (response.didCancel) {
+                                            console.log('User cancelled image picker');
+                                        } else if (response.error) {
+                                            console.log('ImagePicker Error: ', response.error);
+                                        } else {
+                                            setImageUri(response.assets[0].uri);
+                                        }
+                                        setModalVisible(false);
+                                    });
+                                }}
+                                style={{ marginVertical: 8 }}
+                            >
+                                Choose from Gallery
+                            </Button>
+                        </Dialog.Content>
+                    </Dialog>
+                </Portal>
 
-            <ListItem bottomDivider>
-                <ListItem.Content>
-                    <ListItem.Title>Recurrence</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>Set</ListItem.Subtitle>
-            </ListItem>
-            <DropDownPicker
-                open={recurrenceOpen}
-                value={recurrenceValue}
-                items={recurrenceItems}
-                setOpen={setRecurrenceOpen}
-                setValue={setRecurrenceValue}
-                setItems={setRecurrenceItems}
-                placeholder="Select recurrence"
-                containerStyle={styles.dropdownContainer}
-                onChangeValue={(value) => {
-                    setDayOpen(false);
-                    setWeekOpen(false);
-                    setMonthOpen(false);
-                    setYearOpen(false);
-                }}
-            />
+                {imageUri && (
+                    <Card style={styles.card}>
+                        <Card.Content>
+                            <Image
+                                source={{ uri: imageUri }}
+                                style={styles.image}
+                                resizeMode="cover"
+                            />
+                            <Button
+                                icon="delete"
+                                mode="contained"
+                                onPress={() => setImageUri(null)}
+                                style={{ marginTop: 8 }}
+                            >
+                                Remove Photo
+                            </Button>
+                        </Card.Content>
+                    </Card>
+                )}
 
-            {recurrenceValue === 'daily' && (
-                <DropDownPicker
-                    open={dayOpen}
-                    value={dayValue}
-                    items={days}
-                    multiple={true}
-                    min={1}
-                    max={7}
-                    setOpen={setDayOpen}
-                    setValue={setDayValue}
-                    placeholder="Select days of the week"
-                    containerStyle={styles.dropdownContainer}
-                />
-            )}
+                {/* Categories Menu */}
+                <Portal>
+                    <Dialog visible={showCategoriesMenu} onDismiss={() => setShowCategoriesMenu(false)}>
+                        <Dialog.Title>Select Categories</Dialog.Title>
+                        <Dialog.Content>
+                            <View>
+                                {categoryOptions.map(category => (
+                                    <List.Item
+                                        key={category.id}
+                                        title={category.label}
+                                        onPress={() => {
+                                            if (categories.includes(category.label)) {
+                                                setCategories(categories.filter(c => c !== category.label));
+                                            } else {
+                                                setCategories([...categories, category.label]);
+                                            }
+                                        }}
+                                        left={props => <List.Icon {...props} icon={category.icon} />}
+                                        right={props => 
+                                            categories.includes(category.label) ? 
+                                            <List.Icon {...props} icon="check" /> : null
+                                        }
+                                    />
+                                ))}
+                                <Button
+                                    icon="plus"
+                                    mode="outlined"
+                                    onPress={() => {
+                                        setShowAddCategory(true);
+                                        setShowCategoriesMenu(false);
+                                    }}
+                                    style={{ marginTop: 16 }}
+                                >
+                                    Add New Category
+                                </Button>
+                            </View>
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowCategoriesMenu(false)}>Done</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
 
-            {recurrenceValue === 'weekly' && (
-                <DropDownPicker
-                    open={weekOpen}
-                    value={weekValue}
-                    items={weeks}
-                    multiple={true}
-                    min={1}
-                    max={4}
-                    setOpen={setWeekOpen}
-                    setValue={setWeekValue}
-                    placeholder="Select weeks"
-                    containerStyle={styles.dropdownContainer}
-                />
-            )}
+                {/* Add New Category Dialog */}
+                <Portal>
+                    <Dialog visible={showAddCategory} onDismiss={() => setShowAddCategory(false)}>
+                        <Dialog.Title>Add New Category</Dialog.Title>
+                        <Dialog.Content>
+                            <TextInput
+                                label="Category Name"
+                                value={newCategory}
+                                onChangeText={setNewCategory}
+                                mode="outlined"
+                                style={styles.input}
+                            />
+                            <List.Item
+                                title="Select Icon"
+                                description={newCategoryIcon ? `Selected: ${availableIcons.find(i => i.name === newCategoryIcon)?.label || newCategoryIcon}` : "Choose an icon"}
+                                onPress={() => setShowIconSelector(true)}
+                                left={props => newCategoryIcon ? <List.Icon {...props} icon={newCategoryIcon} /> : null}
+                                right={props => <List.Icon {...props} icon="chevron-right" />}
+                                style={styles.iconSelector}
+                            />
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => {
+                                setShowAddCategory(false);
+                                setShowCategoriesMenu(true);
+                                setNewCategory('');
+                                setNewCategoryIcon('');
+                            }}>Cancel</Button>
+                            <Button 
+                                onPress={() => {
+                                    if (newCategory && newCategoryIcon) {
+                                        const newCategoryObj = {
+                                            id: (categoryOptions.length + 1).toString(),
+                                            label: newCategory,
+                                            icon: newCategoryIcon
+                                        };
+                                        setCategoryOptions([...categoryOptions, newCategoryObj]);
+                                        setNewCategory('');
+                                        setNewCategoryIcon('');
+                                        setShowAddCategory(false);
+                                        setShowCategoriesMenu(true);
+                                    }
+                                }}
+                                disabled={!newCategory || !newCategoryIcon}
+                            >
+                                Add
+                            </Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
 
-            {recurrenceValue === 'monthly' && (
-                <DropDownPicker
-                    open={monthOpen}
-                    value={monthValue}
-                    items={months}
-                    multiple={true}
-                    min={1}
-                    max={12}
-                    setOpen={setMonthOpen}
-                    setValue={setMonthValue}
-                    placeholder="Select months"
-                    containerStyle={styles.dropdownContainer}
-                />
-            )}
+                {/* Icon Selector Dialog */}
+                <Portal>
+                    <Dialog visible={showIconSelector} onDismiss={() => setShowIconSelector(false)}>
+                        <Dialog.Title>Select Icon</Dialog.Title>
+                        <Dialog.ScrollArea>
+                            <View style={styles.iconGrid}>
+                                {availableIcons.map((icon, index) => (
+                                    <TouchableOpacity
+                                        key={icon.name}
+                                        style={[
+                                            styles.iconGridItem,
+                                            newCategoryIcon === icon.name && styles.selectedIconItem
+                                        ]}
+                                        onPress={() => {
+                                            setNewCategoryIcon(icon.name);
+                                            setShowIconSelector(false);
+                                        }}
+                                    >
+                                        <List.Icon icon={icon.name} />
+                                        <Text style={styles.iconLabel}>{icon.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </Dialog.ScrollArea>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowIconSelector(false)}>Cancel</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
 
-            {recurrenceValue === 'yearly' && (
-                <DropDownPicker
-                    open={yearOpen}
-                    value={yearValue}
-                    items={years}
-                    multiple={true}
-                    min={1}
-                    max={10}
-                    setOpen={setYearOpen}
-                    setValue={setYearValue}
-                    placeholder="Select years"
-                    containerStyle={styles.dropdownContainer}
-                />
-            )}
+                {/* Vendors Menu */}
+                <Portal>
+                    <Dialog visible={showVendorsMenu} onDismiss={() => setShowVendorsMenu(false)}>
+                        <Dialog.Title>Select Vendors</Dialog.Title>
+                        <Dialog.Content>
+                            <View>
+                                {vendorOptions.map(vendor => (
+                                    <List.Item
+                                        key={vendor}
+                                        title={vendor}
+                                        onPress={() => {
+                                            if (vendors.includes(vendor)) {
+                                                setVendors(vendors.filter(v => v !== vendor));
+                                            } else {
+                                                setVendors([...vendors, vendor]);
+                                            }
+                                        }}
+                                        right={props => 
+                                            vendors.includes(vendor) ? 
+                                            <List.Icon {...props} icon="check" /> : null
+                                        }
+                                    />
+                                ))}
+                            </View>
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowVendorsMenu(false)}>Done</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
 
+                <RecurrenceDialog />
 
-            <ListItem bottomDivider onPress={() => { SetWorkTypeModal(true) }}>
-                <ListItem.Content>
-                    <ListItem.Title>Work Type</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>{WorktypeValue}</ListItem.Subtitle>
-            </ListItem>
+                {showEstimatedTimePicker && (
+                    <DateTimePicker
+                        value={estimatedTime}
+                        mode="time"
+                        is24Hour={false}
+                        display="default"
+                        onChange={(event, selectedTime) => {
+                            setShowEstimatedTimePicker(false);
+                            if (selectedTime) {
+                                setEstimatedTime(selectedTime);
+                            }
+                        }}
+                    />
+                )}
 
+<<<<<<< HEAD
             <ListItem bottomDivider>
                 <ListItem.Content>
                     <ListItem.Title>Location</ListItem.Title>
@@ -504,193 +797,163 @@ export default function NewWorkOrder() {
                 <ListItem.Subtitle>Assign Asset</ListItem.Subtitle>
                 </TouchableOpacity>
             </ListItem>
+=======
+                {showStartDatePicker && (
+                    <DateTimePicker
+                        value={startDate}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                            setShowStartDatePicker(false);
+                            if (selectedDate) setStartDate(selectedDate);
+                        }}
+                    />
+                )}
 
-            <ListItem bottomDivider>
-                <ListItem.Content>
-                    <ListItem.Title>Parts Needed</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>Add Parts</ListItem.Subtitle>
-            </ListItem>
+                {showDueDatePicker && (
+                    <DateTimePicker
+                        value={dueDate}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                            setShowDueDatePicker(false);
+                            if (selectedDate) setDueDate(selectedDate);
+                        }}
+                    />
+                )}
+>>>>>>> c29c0c6 (procedure)
 
-            <ListItem bottomDivider>
-                <ListItem.Content>
-                    <ListItem.Title>Categories</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>Add Categories</ListItem.Subtitle>
-            </ListItem>
-
-            <ListItem bottomDivider>
-                <ListItem.Content>
-                    <ListItem.Title>Files</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>Attach</ListItem.Subtitle>
-            </ListItem>
-
-            <ListItem bottomDivider>
-                <ListItem.Content>
-                    <ListItem.Title>Vendors</ListItem.Title>
-                </ListItem.Content>
-                <ListItem.Subtitle>Add Vendors</ListItem.Subtitle>
-            </ListItem>
-            {timePickerVisible && (
-                <DateTimePicker
-                    value={selectedTime}
-                    mode="time"
-                    is24Hour={true}
-                    display="default"
-                    onChange={handleTimeChange}
-                />
-            )}
-            {timePickerVisibleStart && (
-                <DateTimePicker
-                    value={startTime}
-                    mode="time"
-                    is24Hour={true}
-                    display="default"
-                    onChange={handleStartTimeChange}
-                />
-            )}
-
-            {/* Due Time DateTime Picker */}
-            {timePickerVisibleDue && (
-                <DateTimePicker
-                    value={dueTime}
-                    mode="time"
-                    is24Hour={true}
-                    display="default"
-                    onChange={handleDueTimeChange}
-                />
-            )}
-
-            {isPickerVisible && (
-                <DateTimePicker
-                    value={time}
-                    mode="time"
-                    is24Hour={true}
-                    display="spinner"
-                    onChange={handleConfirm}
-                />
-            )}
-            <BottomSheet isVisible={modalVisible} onBackdropPress={() => setModalVisible(false)} >
-                {list.map((item, index) => (
-                    <View style={{ backgroundColor: "red", }}>
-                        <ListItem key={index} onPress={item.onPress} containerStyle={item.containerStyle}>
-                            <Icon name={item.icon} type="material" color="#1E90FF" />
-                            <ListItem.Content>
-                                <ListItem.Title style={item.titleStyle}>{item.title}</ListItem.Title>
-                            </ListItem.Content>
-                        </ListItem>
-                    </View>
-                ))}
-            </BottomSheet>
-            <BottomSheet isVisible={WorkTypeModal} onBackdropPress={() => setModalVisible(false)} >
-                {WorkType.map((item, index) => (
-                    <View style={{ backgroundColor: "red", }}>
-                        <ListItem key={index} onPress={() => {
-                            SetWorktypeValue(item.label)
-                            SetWorkTypeModal(false)
-                        }} containerStyle={item.containerStyle}>
-                            <Icon name={item.icon} type="material" color="#1E90FF" />
-                            <ListItem.Content>
-                                <ListItem.Title style={item.titleStyle}>{item.label}</ListItem.Title>
-                            </ListItem.Content>
-                        </ListItem>
-                    </View>
-                ))}
-            </BottomSheet>
-        </ScrollView>
+                {showEndDatePicker && (
+                    <DateTimePicker
+                        value={recurrenceEndDate}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                            setShowEndDatePicker(false);
+                            if (selectedDate) setRecurrenceEndDate(selectedDate);
+                        }}
+                        minimumDate={new Date()}
+                    />
+                )}
+            </ScrollView>
+        </PaperProvider>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    scrollView: {
         flex: 1,
-        paddingHorizontal: 16,
-        backgroundColor: '#FFFFFF',
+        padding: 16,
     },
-    inputContainer: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
-        marginBottom: 10,
+    card: {
+        marginBottom: 16,
+        elevation: 2,
     },
-    addButton: {
-        borderColor: '#1E90FF',
-        backgroundColor: '#E6F5FF',
-        borderRadius: 5,
-        marginVertical: 10,
+    input: {
+        marginBottom: 16,
+        backgroundColor: 'white',
     },
-    buttonText: {
-        color: '#1E90FF',
-        marginLeft: 8,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginTop: 10,
-        color: '#333',
-    },
-    descriptionContainer: {
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 5,
-        padding: 8,
-    },
-    buttonGroup: {
-        marginVertical: 10,
-        borderRadius: 5,
-    },
-    selectedText: {
-        color: '#fff',
-    },
-    imageContainer: {
-        alignItems: 'center',
-        marginVertical: 10,
+    sectionTitle: {
+        marginTop: 8,
+        marginBottom: 8,
+        fontWeight: '500',
     },
     image: {
-        width: 200,
+        width: '100%',
         height: 200,
-        borderRadius: 10,
+        borderRadius: 8,
+        marginVertical: 8,
     },
-    modalOverlay: {
-        flex: 1,
+    divider: {
+        marginVertical: 8,
+    },
+    fileItem: {
+        marginVertical: 4,
+    },
+    chipContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 8,
+    },
+    chip: {
+        marginRight: 8,
+        marginBottom: 8,
+    },
+    priorityContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    priorityButton: {
+        width: 80,
+        height: 40,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: 8,
     },
-    modalContainer: {
-        width: 300,
-        padding: 20,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        alignItems: 'center',
+    priorityButtonSelected: {
+        borderWidth: 2,
+        borderColor: 'white',
     },
-    modalTitle: {
-        fontSize: 18,
+    priorityText: {
+        fontSize: 14,
+        color: 'white',
+    },
+    priorityTextSelected: {
         fontWeight: 'bold',
-        marginBottom: 20,
-        color: '#333',
     },
-    modalButton: {
+    attachmentItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    attachmentImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 8,
+        marginRight: 8,
+    },
+    iconPreview: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 10,
-        width: '100%',
+        marginTop: 8,
     },
-    modalIcon: {
-        marginRight: 10,
+    categoryIconsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 8,
     },
-    modalButtonText: {
+    categoryIcon: {
+        marginRight: 4,
+    },
+    moreCategories: {
         fontSize: 16,
-        color: '#1E90FF',
+        color: '#333',
+        marginLeft: 4,
     },
-    cancelButton: {
-        marginTop: 15,
-        borderColor: '#1E90FF',
-        borderWidth: 1,
-        backgroundColor: 'transparent',
+    iconSelector: {
+        marginBottom: 16,
     },
-    buttonGroup: {
-        marginVertical: 10,
-        borderRadius: 5,
+    iconGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-around',
+    },
+    iconGridItem: {
+        width: 80,
+        height: 80,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 8,
+        margin: 8,
+        backgroundColor: '#f7f7f7',
+    },
+    selectedIconItem: {
+        backgroundColor: '#e0e0e0',
+    },
+    iconLabel: {
+        fontSize: 12,
+        marginTop: 4,
     },
 });
