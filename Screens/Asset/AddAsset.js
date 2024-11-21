@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   ScrollView,
@@ -18,17 +18,26 @@ import {
   List,
   Divider,
   IconButton,
-  Menu,
   SegmentedButtons,
   FAB,
   Searchbar,
 } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import Navigation from '../../Navigation/Navigation';
 import { useNavigation } from '@react-navigation/native';
-const AddAsset = ({ navigation }) => {
-  // State for form fields
+import { useDispatch, useSelector } from 'react-redux';
+import { addAsset, addLocation, addAssetType, addPart } from '../../redux/reducers/assetReducer';
+
+const AddAsset = () => {
+  const navigation = useNavigation();
+  const dispatch = useDispatch();
+
+  // Redux state
+  const locations = useSelector((state) => state.locations.locations);
+  const assetTypes = useSelector((state) => state.assets.assetTypes);
+  const partsList = useSelector((state) => state.assets.parts);
+
+  // Local state
   const [assetImage, setAssetImage] = useState(null);
   const [task, setTask] = useState('');
   const [description, setDescription] = useState('');
@@ -44,8 +53,9 @@ const AddAsset = ({ navigation }) => {
   const [team, setTeam] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [parts, setParts] = useState([]);
-  const [showImageOptions, setShowImageOptions] = useState(false);
+
   // Dialog visibility states
+  const [showImageOptions, setShowImageOptions] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showTeamPicker, setShowTeamPicker] = useState(false);
   const [showVendorPicker, setShowVendorPicker] = useState(false);
@@ -53,77 +63,75 @@ const AddAsset = ({ navigation }) => {
   const [showAssetTypePicker, setShowAssetTypePicker] = useState(false);
   const [showAddAssetType, setShowAddAssetType] = useState(false);
   const [showAddPart, setShowAddPart] = useState(false);
+  const [showAddLocation, setShowAddLocation] = useState(false);
+
+  // Search queries
+  const [searchQuery, setSearchQuery] = useState('');
+  const [assetTypeSearchQuery, setAssetTypeSearchQuery] = useState('');
+  const [partsSearchQuery, setPartsSearchQuery] = useState('');
+
+  // New item states
+  const [newLocationName, setNewLocationName] = useState('');
+  const [newLocationType, setNewLocationType] = useState('');
+  const [newAssetTypeName, setNewAssetTypeName] = useState('');
+  const [newAssetCategory, setNewAssetCategory] = useState('');
+  const [newPartName, setNewPartName] = useState('');
+  const [newPartCategory, setNewPartCategory] = useState('');
+  const [newPartQuantity, setNewPartQuantity] = useState('');
+
   // Sample data
   const criticalityLevels = [
     { value: 'Critical', label: 'Critical' },
     { value: 'Important', label: 'Important' },
     { value: 'Normal', label: 'Normal' },
   ];
-  // Asset Types State
-  const [assetTypes, setAssetTypes] = useState([
-    { id: '1', name: 'Machinery', category: 'Equipment' },
-    { id: '2', name: 'Electronics', category: 'Equipment' },
-    { id: '3', name: 'Vehicles', category: 'Transport' },
-    { id: '4', name: 'Tools', category: 'Equipment' },
-    { id: '5', name: 'Infrastructure', category: 'Facility' },
-    { id: '6', name: 'HVAC', category: 'Facility' },
-    { id: '7', name: 'Safety Equipment', category: 'Safety' },
-  ]);
-  const [newAssetTypeName, setNewAssetTypeName] = useState('');
-  const [newAssetCategory, setNewAssetCategory] = useState('');
-  const [assetTypeSearchQuery, setAssetTypeSearchQuery] = useState('');
-  // Parts State
-  const [partsList, setPartsList] = useState([
-    { id: '1', name: 'Motor', category: 'Mechanical', quantity: 5 },
-    { id: '2', name: 'Circuit Board', category: 'Electronic', quantity: 10 },
-    { id: '3', name: 'Belt', category: 'Mechanical', quantity: 15 },
-    { id: '4', name: 'Filter', category: 'Consumable', quantity: 20 },
-    { id: '5', name: 'Sensor', category: 'Electronic', quantity: 8 },
-  ]);
-  const [newPartName, setNewPartName] = useState('');
-  const [newPartCategory, setNewPartCategory] = useState('');
-  const [newPartQuantity, setNewPartQuantity] = useState('');
-  const [partsSearchQuery, setPartsSearchQuery] = useState('');
-  // Categories
+
   const assetCategories = ['Equipment', 'Transport', 'Facility', 'Safety', 'Other'];
   const partCategories = ['Mechanical', 'Electronic', 'Consumable', 'Safety', 'Other'];
-  // Location data
-  const [locations, setLocations] = useState([
-    { id: '1', name: 'Main Building', type: 'Building' },
-    { id: '2', name: 'Production Floor', type: 'Area' },
-    { id: '3', name: 'Warehouse A', type: 'Storage' },
-    { id: '4', name: 'Maintenance Shop', type: 'Workshop' },
-    { id: '5', name: 'Assembly Line 1', type: 'Production' },
-  ]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAddLocation, setShowAddLocation] = useState(false);
-  const [newLocationName, setNewLocationName] = useState('');
-  const [newLocationType, setNewLocationType] = useState('');
-  // Location type options
-  const locationTypes = [
-    'Building',
-    'Area',
-    'Storage',
-    'Workshop',
-    'Production',
-    'Office',
-    'Other'
-  ];
-  // Filter locations based on search
+  const locationTypes = ['Building', 'Area', 'Storage', 'Workshop', 'Production', 'Office', 'Other'];
+
+  // Filter functions
   const filteredLocations = locations.filter(location =>
     location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     location.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  // Filter functions
+
   const filteredAssetTypes = assetTypes.filter(type =>
     type.name.toLowerCase().includes(assetTypeSearchQuery.toLowerCase()) ||
     type.category.toLowerCase().includes(assetTypeSearchQuery.toLowerCase())
   );
+
   const filteredParts = partsList.filter(part =>
     part.name.toLowerCase().includes(partsSearchQuery.toLowerCase()) ||
     part.category.toLowerCase().includes(partsSearchQuery.toLowerCase())
   );
-  // Handle adding new location
+
+  // Handler functions
+  const handleImagePicker = (type) => {
+    const options = {
+      mediaType: 'photo',
+      includeBase64: false,
+      maxHeight: 2000,
+      maxWidth: 2000,
+      quality: 0.8,
+    };
+
+    const launchFunction = type === 'camera' ? launchCamera : launchImageLibrary;
+
+    launchFunction(options, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.errorCode) {
+        console.log('ImagePicker Error: ', response.errorMessage);
+        Alert.alert('Error', 'Failed to select image. Please try again.');
+      } else if (response.assets && response.assets[0]) {
+        setAssetImage(response.assets[0].uri);
+      }
+    });
+
+    setShowImageOptions(false);
+  };
+
   const handleAddLocation = () => {
     if (!newLocationName.trim()) {
       Alert.alert('Error', 'Please enter a location name');
@@ -133,18 +141,13 @@ const AddAsset = ({ navigation }) => {
       Alert.alert('Error', 'Please select a location type');
       return;
     }
-    const newLocation = {
-      id: (locations.length + 1).toString(),
-      name: newLocationName.trim(),
-      type: newLocationType,
-    };
-    setLocations([...locations, newLocation]);
+    dispatch(addLocation({ name: newLocationName.trim(), type: newLocationType }));
     setNewLocationName('');
     setNewLocationType('');
     setShowAddLocation(false);
     Alert.alert('Success', 'New location added successfully');
   };
-  // Handle adding new asset type
+
   const handleAddAssetType = () => {
     if (!newAssetTypeName.trim()) {
       Alert.alert('Error', 'Please enter an asset type name');
@@ -154,18 +157,13 @@ const AddAsset = ({ navigation }) => {
       Alert.alert('Error', 'Please select a category');
       return;
     }
-    const newType = {
-      id: (assetTypes.length + 1).toString(),
-      name: newAssetTypeName.trim(),
-      category: newAssetCategory,
-    };
-    setAssetTypes([...assetTypes, newType]);
+    dispatch(addAssetType({ name: newAssetTypeName.trim(), category: newAssetCategory }));
     setNewAssetTypeName('');
     setNewAssetCategory('');
     setShowAddAssetType(false);
     Alert.alert('Success', 'New asset type added successfully');
   };
-  // Handle adding new part
+
   const handleAddPart = () => {
     if (!newPartName.trim()) {
       Alert.alert('Error', 'Please enter a part name');
@@ -175,72 +173,37 @@ const AddAsset = ({ navigation }) => {
       Alert.alert('Error', 'Please select a category');
       return;
     }
-    if (!newPartQuantity || isNaN(newPartQuantity)) {
+    if (!newPartQuantity || isNaN(parseInt(newPartQuantity))) {
       Alert.alert('Error', 'Please enter a valid quantity');
       return;
     }
-    const newPart = {
-      id: (partsList.length + 1).toString(),
+    dispatch(addPart({
       name: newPartName.trim(),
       category: newPartCategory,
       quantity: parseInt(newPartQuantity),
-    };
-    setPartsList([...partsList, newPart]);
+    }));
     setNewPartName('');
     setNewPartCategory('');
     setNewPartQuantity('');
     setShowAddPart(false);
     Alert.alert('Success', 'New part added successfully');
   };
-  // Select location
+
   const handleSelectLocation = (selectedLocation) => {
     setLocation(`${selectedLocation.name} (${selectedLocation.type})`);
     setShowLocationPicker(false);
   };
-  // Select handlers
+
   const handleSelectAssetType = (selectedType) => {
     setAssetType(selectedType.name);
     setShowAssetTypePicker(false);
   };
+
   const handleSelectPart = (selectedPart) => {
     setParts([...parts, selectedPart]);
     setShowPartsPicker(false);
   };
-  // Handle image capture/selection
-  const handleImagePicker = (type) => {
-    const options = {
-      mediaType: 'photo',
-      includeBase64: false,
-      maxHeight: 2000,
-      maxWidth: 2000,
-      quality: 0.8,
-    };
-    if (type === 'camera') {
-      launchCamera(options, (response) => {
-        if (response.didCancel) {
-          console.log('User cancelled camera');
-        } else if (response.error) {
-          console.log('Camera Error: ', response.error);
-          Alert.alert('Error', 'Failed to take photo. Please try again.');
-        } else if (response.assets && response.assets[0]) {
-          setAssetImage(response.assets[0].uri);
-        }
-      });
-    } else {
-      launchImageLibrary(options, (response) => {
-        if (response.didCancel) {
-          console.log('User cancelled image picker');
-        } else if (response.error) {
-          console.log('ImagePicker Error: ', response.error);
-          Alert.alert('Error', 'Failed to select image. Please try again.');
-        } else if (response.assets && response.assets[0]) {
-          setAssetImage(response.assets[0].uri);
-        }
-      });
-    }
-    setShowImageOptions(false);
-  };
-  // Handle file attachments
+
   const handleAttachment = () => {
     Alert.alert(
       'Add Attachment',
@@ -262,34 +225,14 @@ const AddAsset = ({ navigation }) => {
       { cancelable: true }
     );
   };
-  // Handle barcode input
-  const handleBarcodeScan = () => {
-    Alert.prompt(
-      'Enter Barcode',
-      'Please enter the barcode number:',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'OK',
-          onPress: code => setBarcode(code || ''),
-        },
-      ],
-      'plain-text',
-      '',
-      'numeric'
-    );
-  };
+
   const handleSave = () => {
-    // Validate required fields
-    if (!task || !description || !location || !criticality) {
+    if (!task || !description || !criticality) {
       Alert.alert('Required Fields', 'Please fill in all required fields');
       return;
     }
-    // Create asset object
     const asset = {
+      id: Date.now().toString(),
       task,
       description,
       barcode,
@@ -306,12 +249,11 @@ const AddAsset = ({ navigation }) => {
       vendors,
       parts,
     };
-    // Here you would typically send this to your backend
+    dispatch(addAsset(asset));
     console.log('Saving asset:', asset);
-    // Navigate back
     navigation.goBack();
   };
-  const Navigation=useNavigation()
+
   return (
     <View style={styles.container}>
       <Appbar.Header>
@@ -320,7 +262,6 @@ const AddAsset = ({ navigation }) => {
         <Appbar.Action icon="check" onPress={handleSave} />
       </Appbar.Header>
       <ScrollView style={styles.scrollView}>
-        {/* Image Section */}
         <View style={styles.imageSection}>
           {assetImage ? (
             <TouchableOpacity onPress={() => setShowImageOptions(true)}>
@@ -336,7 +277,7 @@ const AddAsset = ({ navigation }) => {
             </TouchableOpacity>
           )}
         </View>
-        {/* Basic Information */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
           <TextInput
@@ -367,12 +308,12 @@ const AddAsset = ({ navigation }) => {
             <IconButton
               icon="keyboard"
               size={24}
-              onPress={handleBarcodeScan}
+              onPress={() => Alert.alert('Barcode', 'Scan or enter barcode')}
               style={styles.scanButton}
             />
           </View>
         </View>
-        {/* Location and Details */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location & Details</Text>
           <List.Item
@@ -421,7 +362,7 @@ const AddAsset = ({ navigation }) => {
             style={styles.input}
           />
         </View>
-        {/* Asset Type */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Asset Type</Text>
           <List.Item
@@ -431,7 +372,7 @@ const AddAsset = ({ navigation }) => {
             right={props => <List.Icon {...props} icon="chevron-right" />}
           />
         </View>
-        {/* Teams, Vendors, and Parts */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Teams & Vendors</Text>
           <List.Item
@@ -443,7 +384,7 @@ const AddAsset = ({ navigation }) => {
           <List.Item
             title="Vendors"
             description={vendors.length > 0 ? `${vendors.length} vendors selected` : "Select vendors"}
-            onPress={() => { Navigation.navigate("Vendors")  }}
+            onPress={() => navigation.navigate("Vendors")}
             right={props => <List.Icon {...props} icon="chevron-right" />}
           />
           <List.Item
@@ -453,7 +394,7 @@ const AddAsset = ({ navigation }) => {
             right={props => <List.Icon {...props} icon="chevron-right" />}
           />
         </View>
-        {/* Attachments */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Attachments</Text>
           <Button
@@ -484,7 +425,7 @@ const AddAsset = ({ navigation }) => {
           ))}
         </View>
       </ScrollView>
-      {/* Image Options Dialog */}
+
       <Portal>
         <Dialog visible={showImageOptions} onDismiss={() => setShowImageOptions(false)}>
           <Dialog.Title>Add Photo</Dialog.Title>
@@ -504,7 +445,8 @@ const AddAsset = ({ navigation }) => {
             <Button onPress={() => setShowImageOptions(false)}>Cancel</Button>
           </Dialog.Actions>
         </Dialog>
-        <Dialog visible={showLocationPicker} onDismiss={() => setShowLocationPicker(false)} style={styles.locationDialog}>
+
+        <Dialog visible={showLocationPicker} onDismiss={() => setShowLocationPicker(false)} style={styles.pickerDialog}>
           <Dialog.Title>Select Location</Dialog.Title>
           <Dialog.Content>
             <Searchbar
@@ -525,7 +467,7 @@ const AddAsset = ({ navigation }) => {
                 />
               )}
               ItemSeparatorComponent={() => <Divider />}
-              style={styles.locationList}
+              style={styles.listContent}
             />
             <FAB
               icon="plus"
@@ -538,6 +480,7 @@ const AddAsset = ({ navigation }) => {
             <Button onPress={() => setShowLocationPicker(false)}>Cancel</Button>
           </Dialog.Actions>
         </Dialog>
+
         <Dialog visible={showAddLocation} onDismiss={() => setShowAddLocation(false)}>
           <Dialog.Title>Add New Location</Dialog.Title>
           <Dialog.Content>
@@ -566,7 +509,7 @@ const AddAsset = ({ navigation }) => {
             <Button onPress={handleAddLocation}>Add</Button>
           </Dialog.Actions>
         </Dialog>
-        {/* Asset Type Picker Dialog */}
+
         <Dialog visible={showAssetTypePicker} onDismiss={() => setShowAssetTypePicker(false)} style={styles.pickerDialog}>
           <Dialog.Title>Select Asset Type</Dialog.Title>
           <Dialog.Content>
@@ -601,7 +544,7 @@ const AddAsset = ({ navigation }) => {
             <Button onPress={() => setShowAssetTypePicker(false)}>Cancel</Button>
           </Dialog.Actions>
         </Dialog>
-        {/* Add Asset Type Dialog */}
+
         <Dialog visible={showAddAssetType} onDismiss={() => setShowAddAssetType(false)}>
           <Dialog.Title>Add New Asset Type</Dialog.Title>
           <Dialog.Content>
@@ -630,7 +573,7 @@ const AddAsset = ({ navigation }) => {
             <Button onPress={handleAddAssetType}>Add</Button>
           </Dialog.Actions>
         </Dialog>
-        {/* Parts Picker Dialog */}
+
         <Dialog visible={showPartsPicker} onDismiss={() => setShowPartsPicker(false)} style={styles.pickerDialog}>
           <Dialog.Title>Select Parts</Dialog.Title>
           <Dialog.Content>
@@ -665,7 +608,7 @@ const AddAsset = ({ navigation }) => {
             <Button onPress={() => setShowPartsPicker(false)}>Cancel</Button>
           </Dialog.Actions>
         </Dialog>
-        {/* Add Part Dialog */}
+
         <Dialog visible={showAddPart} onDismiss={() => setShowAddPart(false)}>
           <Dialog.Title>Add New Part</Dialog.Title>
           <Dialog.Content>
@@ -706,6 +649,7 @@ const AddAsset = ({ navigation }) => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -761,17 +705,6 @@ const styles = StyleSheet.create({
   attachButton: {
     marginBottom: 12,
   },
-  scanButton: {
-    margin: 0,
-  },
-  centerText: {
-    fontSize: 18,
-    padding: 32,
-    color: '#fff',
-    textAlign: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 8,
-  },
   barcodeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -781,13 +714,16 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  locationDialog: {
+  scanButton: {
+    margin: 0,
+  },
+  pickerDialog: {
     maxHeight: '80%',
   },
   searchBar: {
     marginBottom: 8,
   },
-  locationList: {
+  listContent: {
     maxHeight: 400,
   },
   fab: {
@@ -802,12 +738,6 @@ const styles = StyleSheet.create({
   typeButtons: {
     marginVertical: 8,
   },
-  pickerDialog: {
-    maxHeight: '80%',
-  },
-  listContent: {
-    maxHeight: 400,
-  },
   categoryScroll: {
     marginVertical: 8,
   },
@@ -818,4 +748,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 });
+
 export default AddAsset;
