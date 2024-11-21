@@ -7,6 +7,7 @@ export const signIn = createAsyncThunk(
     try {
       const storedUsers = await AsyncStorage.getItem('users');
       // alert(storedUsers)
+      
       const users = storedUsers ? JSON.parse(storedUsers) : [];
       
       const user = users.find(u => u.email === email && u.password === password);
