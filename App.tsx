@@ -1,42 +1,29 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-import React from 'react';
-import { StyleSheet, useColorScheme } from 'react-native';
-import Navigation from './Navigation/Navigation';
-import store from "./Store";
-import { Provider } from 'react-redux';
+import React, { useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider } from 'react-native-paper';
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+import { Provider as StoreProvider, useSelector, useDispatch } from 'react-redux';
+import store from './Store';
+import { checkAuth } from './redux/reducers/authReducer';
+
+import SignIn from './Screens/Authentication/SignIn';
+import SignUp from './Screens/Authentication/SignUp';
+import AddAsset from './Screens/Asset/AddAsset';
+import Navigation from './Navigation/Navigation';
+// Import other screens as needed
+
+const Stack = createStackNavigator();
+
+
+
+const App = () => {
   return (
-    <Provider store={store}>
-        <PaperProvider>
+    <StoreProvider store={store}>
+      <PaperProvider>
         <Navigation />
       </PaperProvider>
-    </Provider>
+    </StoreProvider>
   );
-}
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+};
 
 export default App;
