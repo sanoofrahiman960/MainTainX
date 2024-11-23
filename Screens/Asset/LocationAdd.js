@@ -1,4 +1,4 @@
-import React, { useState ,useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,18 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Image,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { addLocation } from '../../redux/actions/locationAction';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import * as ImagePicker from 'react-native-image-picker';
+import DocumentPicker from 'react-native-document-picker';
+import { BarCodeScanner } from 'expo-barcode-scanner';
 
 export default function LocationAdd() {
   const navigation = useNavigation();
@@ -22,8 +27,91 @@ export default function LocationAdd() {
   const [locationName, setLocationName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
+  const [images, setImages] = useState([]);
+  const [qrCode, setQrCode] = useState('');
+  const [barCode, setBarCode] = useState('');
+  const [teamsInCharge, setTeamsInCharge] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [parentLocation, setParentLocation] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+  const [newTeam, setNewTeam] = useState('');
+  const [newVendor, setNewVendor] = useState({ name: '', contact: '' });
+  
   const Tab = createMaterialTopTabNavigator();
 
+  // Image Picker
+  const pickImage = async () => {
+    const options = {
+      mediaType: 'photo',
+      quality: 1,
+    };
+
+    try {
+      const result = await ImagePicker.launchImageLibrary(options);
+      if (!result.cancelled && result.assets[0]) {
+        setImages([...images, result.assets[0].uri]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  // Take Picture
+  const takePicture = async () => {
+    const options = {
+      mediaType: 'photo',
+      quality: 1,
+    };
+
+    try {
+      const result = await ImagePicker.launchCamera(options);
+      if (!result.cancelled && result.assets[0]) {
+        setImages([...images, result.assets[0].uri]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to take picture');
+    }
+  };
+
+  // File Picker
+  const pickFile = async () => {
+    try {
+      const results = await DocumentPicker.pick({
+        type: [DocumentPicker.types.allFiles],
+        allowMultiSelection: true,
+      });
+      
+      const newFiles = results.map(result => ({
+        name: result.name,
+        uri: result.uri,
+        type: result.type,
+        size: result.size
+      }));
+      
+      setFiles([...files, ...newFiles]);
+    } catch (err) {
+      if (!DocumentPicker.isCancel(err)) {
+        Alert.alert('Error', 'Failed to pick file');
+      }
+    }
+  };
+
+  // Add Team
+  const addTeam = () => {
+    if (newTeam.trim()) {
+      setTeamsInCharge([...teamsInCharge, newTeam.trim()]);
+      setNewTeam('');
+    }
+  };
+
+  // Add Vendor
+  const addVendor = () => {
+    if (newVendor.name.trim()) {
+      setVendors([...vendors, { ...newVendor, id: Date.now().toString() }]);
+      setNewVendor({ name: '', contact: '' });
+    }
+  };
 
   const saveLocation = async () => {
     if (!locationName.trim()) {
@@ -31,153 +119,172 @@ export default function LocationAdd() {
       return;
     }
 
-    try {
-      const newLocation = {
-        id: Date.now().toString(),
-        name: locationName,
-        description,
-        address,
-        // Add other fields as needed
-      };
+    const newLocation = {
+      id: Date.now().toString(),
+      name: locationName,
+      description,
+      address,
+      images,
+      qrCode,
+      barCode,
+      teamsInCharge,
+      vendors,
+      files,
+      parentLocationId: parentLocation,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-      // Save to AsyncStorage
-      const existingLocationsJson = await AsyncStorage.getItem('locations');
-      const existingLocations = existingLocationsJson ? JSON.parse(existingLocationsJson) : [];
-      const updatedLocations = [...existingLocations, newLocation];
-      await AsyncStorage.setItem('locations', JSON.stringify(updatedLocations));
-
-      // Dispatch to Redux
-      dispatch(addLocation(newLocation));
-
-      Alert.alert('Success', 'Location saved successfully');
-      navigation.goBack();
-    } catch (error) {
-      console.error('Error saving location:', error);
-      Alert.alert('Error', 'Failed to save location');
-    }
+    dispatch(addLocation(newLocation));
+    navigation.goBack();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Location</Text>
-        <TouchableOpacity onPress={saveLocation}>
-          <Text style={styles.createButton}>CREATE</Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView>
+        <View style={styles.formContainer}>
+          {/* Basic Information */}
+          <Text style={styles.sectionTitle}>Basic Information</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Location Name"
+            value={locationName}
+            onChangeText={setLocationName}
+          />
+          <TextInput
+            style={[styles.input, styles.multilineInput]}
+            placeholder="Description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
+          <TextInput
+            style={[styles.input, styles.multilineInput]}
+            placeholder="Address"
+            value={address}
+            onChangeText={setAddress}
+            multiline
+          />
 
-      <ScrollView style={styles.content}>
-        <TextInput
-          style={styles.nameInput}
-          placeholder="Enter Location Name"
-          placeholderTextColor="#999"
-          value={locationName}
-          onChangeText={setLocationName}
-        />
-
-        <TouchableOpacity style={styles.imageButton}>
-          <Icon name="camera" size={24} color="#2196F3" />
-          <Text style={styles.imageButtonText}>Add or take pictures</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={styles.descriptionInput}
-          placeholder="Add a description"
-          placeholderTextColor="#999"
-          multiline
-          numberOfLines={4}
-          value={description}
-          onChangeText={setDescription}
-        />
-
-        <Text style={styles.label}>Address</Text>
-        <TextInput
-          style={styles.addressInput}
-          placeholder="Address"
-          placeholderTextColor="#999"
-          value={address}
-          onChangeText={setAddress}
-        />
-
-        <TouchableOpacity style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>QR Code/Barcode</Text>
-          <View style={styles.fieldValue}>
-            <Text style={styles.assignText}>Assign</Text>
-            <Icon name="chevron-right" size={24} color="#999" />
+          {/* Images Section */}
+          <Text style={styles.sectionTitle}>Images</Text>
+          <View style={styles.imageButtons}>
+            <TouchableOpacity style={styles.button} onPress={pickImage}>
+              <Icon name="image-plus" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Pick Image</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={takePicture}>
+              <Icon name="camera" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Take Picture</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+          <ScrollView horizontal style={styles.imagePreview}>
+            {images.map((uri, index) => (
+              <Image key={index} source={{ uri }} style={styles.previewImage} />
+            ))}
+          </ScrollView>
 
-        <TouchableOpacity style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Teams in Charge</Text>
-          <View style={styles.fieldValue}>
-            <Text style={styles.chooseText}>Choose</Text>
-            <Icon name="chevron-right" size={24} color="#999" />
+          {/* QR/Barcode Section */}
+          <Text style={styles.sectionTitle}>QR/Bar Code</Text>
+          <View style={styles.codeContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="QR Code"
+              value={qrCode}
+              onChangeText={setQrCode}
+            />
+            <TouchableOpacity style={styles.scanButton} onPress={() => setShowScanner(true)}>
+              <Icon name="qrcode-scan" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
 
-        <TouchableOpacity style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Vendors</Text>
-          <View style={styles.fieldValue}>
-            <Text style={styles.assignText}>Assign</Text>
-            <Icon name="chevron-right" size={24} color="#999" />
+          {/* Teams Section */}
+          <Text style={styles.sectionTitle}>Teams in Charge</Text>
+          <View style={styles.teamContainer}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Add Team"
+              value={newTeam}
+              onChangeText={setNewTeam}
+            />
+            <TouchableOpacity style={styles.addButton} onPress={addTeam}>
+              <Icon name="plus" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+          {teamsInCharge.map((team, index) => (
+            <View key={index} style={styles.chip}>
+              <Text>{team}</Text>
+              <TouchableOpacity onPress={() => {
+                setTeamsInCharge(teamsInCharge.filter((_, i) => i !== index));
+              }}>
+                <Icon name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+          ))}
 
-        <TouchableOpacity style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Files</Text>
-          <View style={styles.fieldValue}>
-            <Text style={styles.attachText}>Attach</Text>
-            <Icon name="chevron-right" size={24} color="#999" />
+          {/* Vendors Section */}
+          <Text style={styles.sectionTitle}>Vendors</Text>
+          <View style={styles.vendorContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Vendor Name"
+              value={newVendor.name}
+              onChangeText={(text) => setNewVendor({ ...newVendor, name: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Contact Info"
+              value={newVendor.contact}
+              onChangeText={(text) => setNewVendor({ ...newVendor, contact: text })}
+            />
+            <TouchableOpacity style={styles.addButton} onPress={addVendor}>
+              <Icon name="plus" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+          {vendors.map((vendor, index) => (
+            <View key={vendor.id} style={styles.vendorChip}>
+              <Text>{vendor.name}</Text>
+              <Text>{vendor.contact}</Text>
+              <TouchableOpacity onPress={() => {
+                setVendors(vendors.filter((_, i) => i !== index));
+              }}>
+                <Icon name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+          ))}
 
-        <TouchableOpacity style={styles.fieldContainer}>
-          <View style={styles.fieldLabelWithIcon}>
-            <Text style={styles.fieldLabel}>Parent Location</Text>
-            <Icon name="lock" size={16} color="#999" />
-          </View>
-          <View style={styles.fieldValue}>
-            <Text style={styles.parentLocationText}>Parent Location</Text>
-            <Icon name="chevron-right" size={24} color="#999" />
-          </View>
-        </TouchableOpacity>
+          {/* Files Section */}
+          <Text style={styles.sectionTitle}>Files</Text>
+          <TouchableOpacity style={styles.button} onPress={pickFile}>
+            <Icon name="file-plus" size={24} color="#fff" />
+            <Text style={styles.buttonText}>Add File</Text>
+          </TouchableOpacity>
+          {files.map((file, index) => (
+            <View key={index} style={styles.fileChip}>
+              <Icon name="file" size={20} color="#666" />
+              <Text>{file.name}</Text>
+              <TouchableOpacity onPress={() => {
+                setFiles(files.filter((_, i) => i !== index));
+              }}>
+                <Icon name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          {/* Parent Location */}
+          <Text style={styles.sectionTitle}>Parent Location</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Parent Location ID"
+            value={parentLocation}
+            onChangeText={setParentLocation}
+          />
+
+          <TouchableOpacity style={styles.saveButton} onPress={saveLocation}>
+            <Text style={styles.saveButtonText}>Save Location</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-      {/* <Tab.Navigator
-      screenOptions={{
-        tabBarLabelStyle: { fontSize: 16, fontWeight: 'bold' },
-        tabBarIndicatorStyle: { backgroundColor: '#007bff' },
-        tabBarActiveTintColor: '#007bff',
-        tabBarInactiveTintColor: '#000',
-      }}
-    >
-       <Tab.Screen name="LocationAdd" component={LocationAdd} />
-      </Tab.Navigator> */}
-      {/* <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="chart-box" size={24} color="#2196F3" />
-          <Text style={styles.navText}>Overview</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="clipboard-text" size={24} color="#999" />
-          <Text style={styles.navText}>Work Orders</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="view-grid" size={24} color="#999" />
-          <Text style={styles.navText}>Assets</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="message" size={24} color="#999" />
-          <Text style={styles.navText}>Messages</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Icon name="menu" size={24} color="#999" />
-          <Text style={styles.navText}>More</Text>
-        </TouchableOpacity>
-      </View> */}
     </SafeAreaView>
   );
 }
@@ -187,117 +294,114 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  header: {
+  formContainer: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: '#f9f9f9',
+  },
+  multilineInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  imageButtons: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2196F3',
-    padding: 16,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  headerTitle: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 20,
-    marginLeft: 16,
-  },
-  createButton: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  nameInput: {
-    fontSize: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingVertical: 8,
-    marginBottom: 16,
-  },
-  imageButton: {
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F9FF',
-    padding: 16,
-    borderRadius: 4,
-    marginBottom: 24,
+    flex: 0.48,
   },
-  imageButtonText: {
-    color: '#2196F3',
+  buttonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  imagePreview: {
+    height: 120,
+    marginBottom: 16,
+  },
+  previewImage: {
+    width: 100,
+    height: 100,
+    marginRight: 8,
+    borderRadius: 8,
+  },
+  codeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scanButton: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
     marginLeft: 8,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  teamContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addButton: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    padding: 8,
+    borderRadius: 16,
     marginBottom: 8,
   },
-  descriptionInput: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 4,
-    padding: 12,
-    height: 100,
-    textAlignVertical: 'top',
-    marginBottom: 16,
+  vendorContainer: {
+    marginBottom: 12,
   },
-  addressInput: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 4,
-    padding: 12,
-    marginBottom: 16,
-  },
-  fieldContainer: {
+  vendorChip: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    backgroundColor: '#f0f0f0',
+    padding: 8,
+    borderRadius: 16,
+    marginBottom: 8,
   },
-  fieldLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  fieldLabelWithIcon: {
+  fileChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#f0f0f0',
+    padding: 8,
+    borderRadius: 16,
+    marginBottom: 8,
   },
-  fieldValue: {
-    flexDirection: 'row',
+  saveButton: {
+    backgroundColor: '#34C759',
+    padding: 16,
+    borderRadius: 8,
     alignItems: 'center',
+    marginTop: 24,
   },
-  assignText: {
-    color: '#2196F3',
-    marginRight: 8,
-  },
-  chooseText: {
-    color: '#2196F3',
-    marginRight: 8,
-  },
-  attachText: {
-    color: '#2196F3',
-    marginRight: 8,
-  },
-  parentLocationText: {
-    color: '#2196F3',
-    marginRight: 8,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    paddingVertical: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

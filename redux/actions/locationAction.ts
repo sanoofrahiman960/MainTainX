@@ -1,19 +1,32 @@
-import { Location,Assets } from '../types/location';
+import { Location, Assets } from '../types/location';
 
 // Action Types
 export const ADD_LOCATION = 'ADD_LOCATION';
 export const DELETE_LOCATION = 'DELETE_LOCATION';
 export const UPDATE_LOCATION = 'UPDATE_LOCATION';
 export const SET_LOCATIONS = 'SET_LOCATIONS';
-export const ADD_ASSETS = 'ADD_ASSETS'
-export const DELETE_ASSETS = 'DELETE_ASSETS'
-
+export const ADD_ASSETS = 'ADD_ASSETS';
+export const DELETE_ASSETS = 'DELETE_ASSETS';
+export const UPLOAD_LOCATION_IMAGE = 'UPLOAD_LOCATION_IMAGE';
+export const UPDATE_LOCATION_FILES = 'UPDATE_LOCATION_FILES';
 
 // Action Creators
-export const addLocation = (location: Location) => ({
-  type: ADD_LOCATION as typeof ADD_LOCATION,
-  payload: location,
-});
+export const addLocation = (location: Location) => {
+  const timestamp = new Date().toISOString();
+  return {
+    type: ADD_LOCATION as typeof ADD_LOCATION,
+    payload: {
+      ...location,
+      id: location.id || Math.random().toString(36).substr(2, 9),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      images: location.images || [],
+      teamsInCharge: location.teamsInCharge || [],
+      vendors: location.vendors || [],
+      files: location.files || []
+    },
+  };
+};
 
 export const deleteLocation = (locationId: string) => ({
   type: DELETE_LOCATION as typeof DELETE_LOCATION,
@@ -37,6 +50,7 @@ export const addAssets = (assets: Assets[]) => ({
     type: DELETE_ASSETS as typeof DELETE_ASSETS,
     payload: assetsId,
   });
+
 // Async Action Creators (if using Redux Thunk)
 export const fetchLocations = () => {
   return async (dispatch: any) => {

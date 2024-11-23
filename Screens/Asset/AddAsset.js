@@ -24,23 +24,22 @@ import {
 } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { useDispatch } from 'react-redux';
+import { addAssets } from '../../redux/actions/locationAction';
+import DocumentPicker from 'react-native-document-picker';
+import Navigation from '../../Navigation/Navigation';
 import { useNavigation } from '@react-navigation/native';
-import { useDispatch, useSelector } from 'react-redux';
-import { addAsset, addLocation, addAssetType, addPart } from '../../redux/reducers/assetReducer';
 
-const AddAsset = () => {
-  const navigation = useNavigation();
+const AddAsset = ({ navigation }) => {
   const dispatch = useDispatch();
-
-  // Redux state
-  const locations = useSelector((state) => state.locations.locations);
-  const assetTypes = useSelector((state) => state.assets.assetTypes);
-  const partsList = useSelector((state) => state.assets.parts);
-
-  // Local state
-  const [assetImage, setAssetImage] = useState(null);
-  const [task, setTask] = useState('');
+  const [assetName, setAssetName] = useState('');
   const [description, setDescription] = useState('');
+  const [images, setImages] = useState([]);
+  const [qrCode, setQrCode] = useState('');
+  const [barCode, setBarCode] = useState('');
+  const [files, setFiles] = useState([]);
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [task, setTask] = useState('');
   const [barcode, setBarcode] = useState('');
   const [location, setLocation] = useState('');
   const [criticality, setCriticality] = useState('');
@@ -53,9 +52,6 @@ const AddAsset = () => {
   const [team, setTeam] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [parts, setParts] = useState([]);
-
-  // Dialog visibility states
-  const [showImageOptions, setShowImageOptions] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showTeamPicker, setShowTeamPicker] = useState(false);
   const [showVendorPicker, setShowVendorPicker] = useState(false);
@@ -63,73 +59,181 @@ const AddAsset = () => {
   const [showAssetTypePicker, setShowAssetTypePicker] = useState(false);
   const [showAddAssetType, setShowAddAssetType] = useState(false);
   const [showAddPart, setShowAddPart] = useState(false);
-  const [showAddLocation, setShowAddLocation] = useState(false);
-
-  // Search queries
-  const [searchQuery, setSearchQuery] = useState('');
-  const [assetTypeSearchQuery, setAssetTypeSearchQuery] = useState('');
-  const [partsSearchQuery, setPartsSearchQuery] = useState('');
-
-  // New item states
-  const [newLocationName, setNewLocationName] = useState('');
-  const [newLocationType, setNewLocationType] = useState('');
+  const [assetTypes, setAssetTypes] = useState([
+    { id: '1', name: 'Machinery', category: 'Equipment' },
+    { id: '2', name: 'Electronics', category: 'Equipment' },
+    { id: '3', name: 'Vehicles', category: 'Transport' },
+    { id: '4', name: 'Tools', category: 'Equipment' },
+    { id: '5', name: 'Infrastructure', category: 'Facility' },
+    { id: '6', name: 'HVAC', category: 'Facility' },
+    { id: '7', name: 'Safety Equipment', category: 'Safety' },
+  ]);
   const [newAssetTypeName, setNewAssetTypeName] = useState('');
   const [newAssetCategory, setNewAssetCategory] = useState('');
+  const [assetTypeSearchQuery, setAssetTypeSearchQuery] = useState('');
+  const [partsList, setPartsList] = useState([
+    { id: '1', name: 'Motor', category: 'Mechanical', quantity: 5 },
+    { id: '2', name: 'Circuit Board', category: 'Electronic', quantity: 10 },
+    { id: '3', name: 'Belt', category: 'Mechanical', quantity: 15 },
+    { id: '4', name: 'Filter', category: 'Consumable', quantity: 20 },
+    { id: '5', name: 'Sensor', category: 'Electronic', quantity: 8 },
+  ]);
   const [newPartName, setNewPartName] = useState('');
   const [newPartCategory, setNewPartCategory] = useState('');
   const [newPartQuantity, setNewPartQuantity] = useState('');
+  const [partsSearchQuery, setPartsSearchQuery] = useState('');
+  const [locations, setLocations] = useState([
+    { id: '1', name: 'Main Building', type: 'Building' },
+    { id: '2', name: 'Production Floor', type: 'Area' },
+    { id: '3', name: 'Warehouse A', type: 'Storage' },
+    { id: '4', name: 'Maintenance Shop', type: 'Workshop' },
+    { id: '5', name: 'Assembly Line 1', type: 'Production' },
+  ]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddLocation, setShowAddLocation] = useState(false);
+  const [newLocationName, setNewLocationName] = useState('');
+  const [newLocationType, setNewLocationType] = useState('');
+  const [locationTypes, setLocationTypes] = useState([
+    'Building',
+    'Area',
+    'Storage',
+    'Workshop',
+    'Production',
+    'Office',
+    'Other'
+  ]);
 
-  // Sample data
+  const [assetCategories] = useState([
+    'Equipment',
+    'Transport',
+    'Facility',
+    'Safety',
+    'Other'
+  ]);
+
+  const [partCategories] = useState([
+    'Mechanical',
+    'Electronic',
+    'Consumable',
+    'Safety',
+    'Other'
+  ]);
+
   const criticalityLevels = [
     { value: 'Critical', label: 'Critical' },
     { value: 'Important', label: 'Important' },
-    { value: 'Normal', label: 'Normal' },
+    { value: 'Normal', label: 'Normal' }
   ];
 
-  const assetCategories = ['Equipment', 'Transport', 'Facility', 'Safety', 'Other'];
-  const partCategories = ['Mechanical', 'Electronic', 'Consumable', 'Safety', 'Other'];
-  const locationTypes = ['Building', 'Area', 'Storage', 'Workshop', 'Production', 'Office', 'Other'];
+  const [filteredLocations, setFilteredLocations] = useState(locations);
+  const [filteredAssetTypes, setFilteredAssetTypes] = useState(assetTypes);
+  const [filteredParts, setFilteredParts] = useState(partsList);
+  const Navigation=useNavigation()
 
-  // Filter functions
-  const filteredLocations = locations.filter(location =>
-    location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    location.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleSave = () => {
+    if (!assetName.trim()) {
+      Alert.alert('Error', 'Please enter an asset name');
+      return;
+    }
 
-  const filteredAssetTypes = assetTypes.filter(type =>
-    type.name.toLowerCase().includes(assetTypeSearchQuery.toLowerCase()) ||
-    type.category.toLowerCase().includes(assetTypeSearchQuery.toLowerCase())
-  );
-
-  const filteredParts = partsList.filter(part =>
-    part.name.toLowerCase().includes(partsSearchQuery.toLowerCase()) ||
-    part.category.toLowerCase().includes(partsSearchQuery.toLowerCase())
-  );
-
-  // Handler functions
-  const handleImagePicker = (type) => {
-    const options = {
-      mediaType: 'photo',
-      includeBase64: false,
-      maxHeight: 2000,
-      maxWidth: 2000,
-      quality: 0.8,
+    const newAsset = {
+      id: Date.now().toString(),
+      name: assetName,
+      description,
+      images,
+      qrCode,
+      barCode,
+      files,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      task,
+      barcode,
+      location,
+      criticality,
+      serialNumber,
+      model,
+      manufacturer,
+      year,
+      assetType,
+      attachments,
+      team,
+      vendors,
+      parts,
     };
 
-    const launchFunction = type === 'camera' ? launchCamera : launchImageLibrary;
+    dispatch(addAssets(newAsset));
+    navigation.goBack();
+  };
 
-    launchFunction(options, (response) => {
-      if (response.didCancel) {
-        console.log('User cancelled image picker');
-      } else if (response.errorCode) {
-        console.log('ImagePicker Error: ', response.errorMessage);
-        Alert.alert('Error', 'Failed to select image. Please try again.');
-      } else if (response.assets && response.assets[0]) {
-        setAssetImage(response.assets[0].uri);
+  const handleImagePicker = async (type) => {
+    const options = {
+      mediaType: 'photo',
+      quality: 1,
+      selectionLimit: 1,
+    };
+
+    try {
+      let result;
+      if (type === 'camera') {
+        result = await launchCamera(options);
+      } else {
+        result = await launchImageLibrary(options);
       }
-    });
 
+      if (!result.didCancel && result.assets && result.assets[0]) {
+        setImages([...images, result.assets[0].uri]);
+      }
+    } catch (error) {
+      console.error('ImagePicker Error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
     setShowImageOptions(false);
+  };
+
+  const handleAttachment = async () => {
+    try {
+      const results = await DocumentPicker.pick({
+        type: [DocumentPicker.types.allFiles],
+        allowMultiSelection: true,
+        presentationStyle: 'fullScreen',
+      });
+      
+      const newFiles = Array.isArray(results) ? results : [results];
+      const processedFiles = newFiles.map(result => ({
+        name: result.name || 'Untitled',
+        uri: result.uri,
+        type: result.type || 'application/octet-stream',
+        size: result.size || 0
+      }));
+      
+      setFiles(prevFiles => [...prevFiles, ...processedFiles]);
+    } catch (err) {
+      if (!DocumentPicker.isCancel(err)) {
+        console.error('DocumentPicker Error:', err);
+        Alert.alert('Error', 'Failed to pick file');
+      }
+    }
+  };
+
+  const removeFile = (index) => {
+    setFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+
+  const handleBarcodeScan = () => {
+    Alert.prompt(
+      'Enter Barcode',
+      'Please enter the barcode number:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          onPress: (code) => setBarCode(code),
+        },
+      ],
+    );
   };
 
   const handleAddLocation = () => {
@@ -204,249 +308,227 @@ const AddAsset = () => {
     setShowPartsPicker(false);
   };
 
-  const handleAttachment = () => {
-    Alert.alert(
-      'Add Attachment',
-      'Choose attachment type',
-      [
-        {
-          text: 'Take Photo',
-          onPress: () => handleImagePicker('camera'),
-        },
-        {
-          text: 'Choose from Library',
-          onPress: () => handleImagePicker('library'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
-  const handleSave = () => {
-    if (!task || !description || !criticality) {
-      Alert.alert('Required Fields', 'Please fill in all required fields');
-      return;
-    }
-    const asset = {
-      id: Date.now().toString(),
-      task,
-      description,
-      barcode,
-      location,
-      criticality,
-      serialNumber,
-      model,
-      manufacturer,
-      year,
-      assetType,
-      image: assetImage,
-      attachments,
-      team,
-      vendors,
-      parts,
-    };
-    dispatch(addAsset(asset));
-    console.log('Saving asset:', asset);
-    navigation.goBack();
-  };
-
   return (
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Add New Asset" />
+        <Appbar.Content title="Add Asset" />
         <Appbar.Action icon="check" onPress={handleSave} />
       </Appbar.Header>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.imageSection}>
-          {assetImage ? (
-            <TouchableOpacity onPress={() => setShowImageOptions(true)}>
-              <Image source={{ uri: assetImage }} style={styles.assetImage} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.imagePlaceholder}
-              onPress={() => setShowImageOptions(true)}
-            >
-              <Icon name="camera-plus" size={40} color="#666" />
-              <Text>Add Photo</Text>
-            </TouchableOpacity>
-          )}
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
-          <TextInput
-            label="Task *"
-            value={task}
-            onChangeText={setTask}
-            mode="outlined"
-            style={styles.input}
-          />
-          <TextInput
-            label="Description *"
-            value={description}
-            onChangeText={setDescription}
-            mode="outlined"
-            multiline
-            numberOfLines={3}
-            style={styles.input}
-          />
-          <View style={styles.barcodeContainer}>
-            <TextInput
-              label="QR Code/Barcode"
-              value={barcode}
-              onChangeText={setBarcode}
-              mode="outlined"
-              style={styles.barcodeInput}
-              keyboardType="numeric"
-            />
-            <IconButton
-              icon="keyboard"
-              size={24}
-              onPress={() => Alert.alert('Barcode', 'Scan or enter barcode')}
-              style={styles.scanButton}
-            />
-          </View>
-        </View>
+      <ScrollView style={styles.content}>
+        <TextInput
+          label="Asset Name"
+          value={assetName}
+          onChangeText={setAssetName}
+          style={styles.input}
+        />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Location & Details</Text>
-          <List.Item
-            title="Location *"
-            description={location || "Select location"}
-            onPress={() => setShowLocationPicker(true)}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-          />
-          <Text style={styles.inputLabel}>Criticality *</Text>
-          <SegmentedButtons
-            value={criticality}
-            onValueChange={setCriticality}
-            buttons={criticalityLevels.map(level => ({
-              value: level.value,
-              label: level.label,
-            }))}
-            style={styles.segmentedButtons}
-          />
-          <TextInput
-            label="Serial Number"
-            value={serialNumber}
-            onChangeText={setSerialNumber}
-            mode="outlined"
-            style={styles.input}
-          />
-          <TextInput
-            label="Model"
-            value={model}
-            onChangeText={setModel}
-            mode="outlined"
-            style={styles.input}
-          />
-          <TextInput
-            label="Manufacturer"
-            value={manufacturer}
-            onChangeText={setManufacturer}
-            mode="outlined"
-            style={styles.input}
-          />
-          <TextInput
-            label="Year"
-            value={year}
-            onChangeText={setYear}
-            mode="outlined"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-        </View>
+        <TextInput
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={4}
+          style={styles.input}
+        />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Asset Type</Text>
-          <List.Item
-            title="Asset Type"
-            description={assetType || "Select asset type"}
-            onPress={() => setShowAssetTypePicker(true)}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-          />
-        </View>
+        <Button
+          mode="outlined"
+          icon="camera"
+          onPress={() => setShowImageOptions(true)}
+          style={styles.button}
+        >
+          Add Images
+        </Button>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Teams & Vendors</Text>
-          <List.Item
-            title="Teams in Charge"
-            description={team.length > 0 ? `${team.length} teams selected` : "Select teams"}
-            onPress={() => setShowTeamPicker(true)}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-          />
-          <List.Item
-            title="Vendors"
-            description={vendors.length > 0 ? `${vendors.length} vendors selected` : "Select vendors"}
-            onPress={() => navigation.navigate("Vendors")}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-          />
-          <List.Item
-            title="Parts"
-            description={parts.length > 0 ? `${parts.length} parts added` : "Add parts"}
-            onPress={() => setShowPartsPicker(true)}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Attachments</Text>
-          <Button
-            mode="outlined"
-            icon="file-plus"
-            onPress={handleAttachment}
-            style={styles.attachButton}
-          >
-            Add Files
-          </Button>
-          {attachments.map((file, index) => (
-            <List.Item
-              key={index}
-              title={file.name}
-              left={props => <List.Icon {...props} icon="file" />}
-              right={props => (
+        {images.length > 0 && (
+          <ScrollView horizontal style={styles.imagePreview}>
+            {images.map((uri, index) => (
+              <View key={index} style={styles.imageContainer}>
+                <Image source={{ uri }} style={styles.image} />
                 <IconButton
-                  {...props}
                   icon="close"
+                  size={20}
+                  style={styles.removeImage}
                   onPress={() => {
-                    const newAttachments = [...attachments];
-                    newAttachments.splice(index, 1);
-                    setAttachments(newAttachments);
+                    setImages(images.filter((_, i) => i !== index));
                   }}
                 />
-              )}
-            />
-          ))}
-        </View>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        <Button
+          mode="outlined"
+          icon="qrcode"
+          onPress={handleBarcodeScan}
+          style={styles.button}
+        >
+          Add QR/Barcode
+        </Button>
+
+        <Button
+          mode="outlined"
+          icon="file"
+          onPress={handleAttachment}
+          style={styles.button}
+        >
+          Add Files
+        </Button>
+
+        {files.length > 0 && (
+          <View style={styles.filesList}>
+            {files.map((file, index) => (
+              <List.Item
+                key={index}
+                title={file.name}
+                description={`${((file.size || 0) / (1024 * 1024)).toFixed(2)} MB`}
+                left={props => <List.Icon {...props} icon="file" />}
+                right={props => (
+                  <IconButton
+                    {...props}
+                    icon="close"
+                    onPress={() => removeFile(index)}
+                  />
+                )}
+              />
+            ))}
+          </View>
+        )}
+
+        <TextInput
+          label="Task"
+          value={task}
+          onChangeText={setTask}
+          mode="outlined"
+          style={styles.input}
+        />
+
+        <TextInput
+          label="Barcode"
+          value={barcode}
+          onChangeText={setBarcode}
+          mode="outlined"
+          style={styles.input}
+        />
+
+        <List.Item
+          title="Location"
+          description={location || "Select location"}
+          onPress={() => setShowLocationPicker(true)}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+        />
+
+        <Text style={styles.inputLabel}>Criticality</Text>
+        <SegmentedButtons
+          value={criticality}
+          onValueChange={setCriticality}
+          buttons={criticalityLevels.map(level => ({
+            value: level.value,
+            label: level.label,
+          }))}
+          style={styles.segmentedButtons}
+        />
+
+        <TextInput
+          label="Serial Number"
+          value={serialNumber}
+          onChangeText={setSerialNumber}
+          mode="outlined"
+          style={styles.input}
+        />
+
+        <TextInput
+          label="Model"
+          value={model}
+          onChangeText={setModel}
+          mode="outlined"
+          style={styles.input}
+        />
+
+        <TextInput
+          label="Manufacturer"
+          value={manufacturer}
+          onChangeText={setManufacturer}
+          mode="outlined"
+          style={styles.input}
+        />
+
+        <TextInput
+          label="Year"
+          value={year}
+          onChangeText={setYear}
+          mode="outlined"
+          style={styles.input}
+        />
+
+        <List.Item
+          title="Asset Type"
+          description={assetType || "Select asset type"}
+          onPress={() => setShowAssetTypePicker(true)}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+        />
+
+        <List.Item
+          title="Teams in Charge"
+          description={team.length > 0 ? `${team.length} teams selected` : "Select teams"}
+          onPress={() => setShowTeamPicker(true)}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+        />
+
+        <List.Item
+          title="Vendors"
+          description={vendors.length > 0 ? `${vendors.length} vendors selected` : "Select vendors"}
+          onPress={() => { Navigation.navigate("Vendors")  }}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+        />
+
+        <List.Item
+          title="Parts"
+          description={parts.length > 0 ? `${parts.length} parts added` : "Add parts"}
+          onPress={() => setShowPartsPicker(true)}
+          right={props => <List.Icon {...props} icon="chevron-right" />}
+        />
       </ScrollView>
 
       <Portal>
-        <Dialog visible={showImageOptions} onDismiss={() => setShowImageOptions(false)}>
-          <Dialog.Title>Add Photo</Dialog.Title>
+        <Dialog
+          visible={showImageOptions}
+          onDismiss={() => setShowImageOptions(false)}
+        >
+          <Dialog.Title>Add Image</Dialog.Title>
           <Dialog.Content>
-            <List.Item
-              title="Take Photo"
-              left={props => <List.Icon {...props} icon="camera" />}
-              onPress={() => handleImagePicker('camera')}
-            />
-            <List.Item
-              title="Choose from Library"
-              left={props => <List.Icon {...props} icon="image" />}
-              onPress={() => handleImagePicker('library')}
-            />
+            <Button
+              icon="camera"
+              mode="contained"
+              onPress={() => {
+                handleImagePicker('camera');
+                setShowImageOptions(false);
+              }}
+              style={styles.dialogButton}
+            >
+              Take Photo
+            </Button>
+            <Button
+              icon="image"
+              mode="contained"
+              onPress={() => {
+                handleImagePicker('library');
+                setShowImageOptions(false);
+              }}
+              style={styles.dialogButton}
+            >
+              Choose from Library
+            </Button>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setShowImageOptions(false)}>Cancel</Button>
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showLocationPicker} onDismiss={() => setShowLocationPicker(false)} style={styles.pickerDialog}>
+        <Dialog visible={showLocationPicker} onDismiss={() => setShowLocationPicker(false)} style={styles.locationDialog}>
           <Dialog.Title>Select Location</Dialog.Title>
           <Dialog.Content>
             <Searchbar
@@ -653,66 +735,51 @@ const AddAsset = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  section: {
     backgroundColor: '#fff',
+  },
+  content: {
     padding: 16,
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#333',
-  },
-  imageSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  assetImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 8,
-  },
-  imagePlaceholder: {
-    width: 200,
-    height: 200,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderStyle: 'dashed',
   },
   input: {
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  button: {
+    marginBottom: 16,
+  },
+  imagePreview: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  imageContainer: {
+    marginRight: 8,
+    position: 'relative',
+  },
+  image: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  removeImage: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  filesList: {
+    marginBottom: 16,
+  },
+  dialogButton: {
+    marginBottom: 8,
   },
   inputLabel: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
+    marginLeft: 4,
   },
   segmentedButtons: {
-    marginVertical: 12,
-  },
-  attachButton: {
-    marginBottom: 12,
-  },
-  barcodeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  barcodeInput: {
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 16,
   },
   scanButton: {
     margin: 0,

@@ -5,7 +5,7 @@ const initialState = {
   assets:[],
 };
 
-const locationReducer = (state = initialState, action) => {
+const locationReducer = (state = initialState, action:any) => {
   switch (action.type) {
     case ADD_LOCATION:
       return {

@@ -20,14 +20,61 @@ import NewWorkOrder from '../Screens/WorkOrder/WorkOrder';
 import AddAsset from '../Screens/Asset/AddAsset';
 import Vendors from '../Screens/Vendors/Vendors';
 import AssetsTabNavigator from '../Screens/Asset/index';
-import SignIn from '../Screens/Authentication/SignIn';
-import SignUp from '../Screens/Authentication/SignUp';
-
-// Redux actions
-import { checkAuth } from '../redux/reducers/authReducer';
+import AssetDetail from '../Screens/Asset/AssetDetail';
+import LocationDetails from '../Screens/Asset/LocationDetails';
+import Home from '../Screens/Home/Home';
+import WorkOrderDetails from '../Screens/WorkOrder/WorkOrderDetails';
 
 export default function Navigation() {
     const Stack = createStackNavigator();
+
+    return (
+        <NavigationContainer>
+            <Stack.Navigator>
+                <Stack.Screen name="MoreScreen" component={LandingScreen} options={{ headerShown: false }} />
+                <Stack.Screen name="Tabs" component={tabs} options={{ headerShown: false }} />
+                <Stack.Screen name="Procedure" component={Procedure} options={{ headerShown: false }} />
+                <Stack.Screen name="Options" component={Options} options={{ headerShown: false }} />
+                <Stack.Screen name="Assets" component={AssetsTabNavigator} options={{ headerShown: false }} />
+                {/* <Stack.Screen name="AssetsAdd" component={AssetAdd} options={{ headerShown: false }} /> */}
+                <Stack.Screen name="AssetsAdd" component={AddAsset} options={{ headerShown: false }} />
+                <Stack.Screen name="LocationAdd" component={LocationAdd} options={{ headerShown: false }} />
+                <Stack.Screen name="WorkOrderAdd" component={NewWorkOrder} options={{ headerShown: false }} />
+                <Stack.Screen name="Vendors" component={Vendors} options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="AssetDetails"
+                  component={AssetDetail}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="LocationDetails"
+                  component={LocationDetails}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="Home"
+                  component={Home}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="NewWorkOrder"
+                  component={NewWorkOrder}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="WorkOrderDetails"
+                  component={WorkOrderDetails}
+                  options={{ headerShown: false }}
+                />
+            </Stack.Navigator>
+        </NavigationContainer>
+    )
+}
+
+
+
+
+const tabs = () => {
     const Tab = createBottomTabNavigator();
     // Authentication stack
     const AuthStack = () => (
