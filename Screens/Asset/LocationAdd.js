@@ -14,30 +14,36 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { useDispatch, useSelector } from 'react-redux';
-import { addLocation } from '../../redux/actions/locationAction';
+import { useLocationAsset } from '../../hooks/useLocationAsset';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import * as ImagePicker from 'react-native-image-picker';
 import DocumentPicker from 'react-native-document-picker';
 import { BarCodeScanner } from 'expo-barcode-scanner';
+import uuid from 'react-native-uuid';
 
-export default function LocationAdd() {
+export default function LocationAdd({ route }) {
   const navigation = useNavigation();
-  const dispatch = useDispatch();
-  const [locationName, setLocationName] = useState('');
-  const [description, setDescription] = useState('');
-  const [address, setAddress] = useState('');
-  const [images, setImages] = useState([]);
-  const [qrCode, setQrCode] = useState('');
-  const [barCode, setBarCode] = useState('');
-  const [teamsInCharge, setTeamsInCharge] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [files, setFiles] = useState([]);
-  const [parentLocation, setParentLocation] = useState('');
+  const { addNewLocation, updateLocation, locations } = useLocationAsset();
+
+  // Get editing location from route params if it exists
+  const editingLocation = route?.params?.location;
+  const isEditing = route?.params?.isEditing;
+
+  // Initialize state with existing location data if editing
+  const [locationName, setLocationName] = useState(editingLocation?.name || '');
+  const [description, setDescription] = useState(editingLocation?.description || '');
+  const [address, setAddress] = useState(editingLocation?.address || '');
+  const [images, setImages] = useState(editingLocation?.images || []);
+  const [qrCode, setQrCode] = useState(editingLocation?.qrCode || '');
+  const [barCode, setBarCode] = useState(editingLocation?.barCode || '');
+  const [teamsInCharge, setTeamsInCharge] = useState(editingLocation?.teamsInCharge || []);
+  const [vendors, setVendors] = useState(editingLocation?.vendors || []);
+  const [files, setFiles] = useState(editingLocation?.files || []);
+  const [parentLocation, setParentLocation] = useState(editingLocation?.parentLocation || '');
   const [showScanner, setShowScanner] = useState(false);
   const [newTeam, setNewTeam] = useState('');
   const [newVendor, setNewVendor] = useState({ name: '', contact: '' });
-  
+
   const Tab = createMaterialTopTabNavigator();
 
   // Image Picker
@@ -113,29 +119,38 @@ export default function LocationAdd() {
     }
   };
 
-  const saveLocation = async () => {
+  const handleSave = () => {
     if (!locationName.trim()) {
-      Alert.alert('Error', 'Please enter a location name');
+      Alert.alert('Error', 'Location name is required');
       return;
     }
 
     const newLocation = {
-      id: Date.now().toString(),
-      name: locationName,
-      description,
-      address,
+      id: isEditing ? editingLocation.id : uuid.v4(),
+      name: locationName.trim(),
+      description: description.trim(),
+      address: address.trim(),
       images,
       qrCode,
       barCode,
       teamsInCharge,
       vendors,
       files,
-      parentLocationId: parentLocation,
-      createdAt: new Date().toISOString(),
+      parentLocation,
+      createdAt: isEditing ? editingLocation.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    dispatch(addLocation(newLocation));
+    if (isEditing) {
+      // Update existing location
+      updateLocation(newLocation);
+      Alert.alert('Success', 'Location updated successfully');
+    } else {
+      // Add new location
+      addNewLocation(newLocation);
+      Alert.alert('Success', 'Location added successfully');
+    }
+
     navigation.goBack();
   };
 
@@ -280,8 +295,8 @@ export default function LocationAdd() {
             onChangeText={setParentLocation}
           />
 
-          <TouchableOpacity style={styles.saveButton} onPress={saveLocation}>
-            <Text style={styles.saveButtonText}>Save Location</Text>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+            <Text style={styles.saveButtonText}>{isEditing ? 'Update Location' : 'Save Location'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

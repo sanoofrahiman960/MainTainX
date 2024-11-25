@@ -20,6 +20,9 @@ import {
     Text,
     Badge
 } from 'react-native-paper';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectVendor, unselectVendor, clearSelectedVendors } from '../../redux/slices/vendorSlice';
 
 export default function NewWorkOrder() {
     const navigation = useNavigation();
@@ -36,15 +39,23 @@ export default function NewWorkOrder() {
     const [location, setLocation] = useState('');
     const [asset, setAsset] = useState('');
     const [categories, setCategories] = useState([]);
-    const [vendors, setVendors] = useState([]);
+    const vendors = useSelector(state => state.vendor.vendors);
+    const selectedVendors = useSelector(state => state.vendor.selectedVendors);
     
+    // Location states
+    const [locations, setLocations] = useState(['Building A', 'Building B', 'Workshop', 'Warehouse']);
+    const [showLocationDialog, setShowLocationDialog] = useState(false);
+    const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
+    const [newLocation, setNewLocation] = useState('');
+
     // Menu visibility states
     const [showWorkTypeMenu, setShowWorkTypeMenu] = useState(false);
     const [showCategoriesMenu, setShowCategoriesMenu] = useState(false);
     const [showVendorsMenu, setShowVendorsMenu] = useState(false);
-    const [showAddCategory, setShowAddCategory] = useState(false);
+    const [showAddCategoryDialog, setShowAddCategoryDialog] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [selectedIcon, setSelectedIcon] = useState('');
     const [showIconSelector, setShowIconSelector] = useState(false);
-    const [newCategory, setNewCategory] = useState('');
     const [newCategoryIcon, setNewCategoryIcon] = useState('');
     
     // Date and time states
@@ -72,7 +83,6 @@ export default function NewWorkOrder() {
         { id: '4', label: 'Mechanical', icon: 'wrench' },
         { id: '5', label: 'General', icon: 'tools' }
     ]);
-    const vendorOptions = ['Vendor A', 'Vendor B', 'Vendor C', 'Vendor D'];
     const priorities = [
         { label: 'Low', value: 0, color: '#4CAF50' },
         { label: 'Medium', value: 1, color: '#FFC107' },
@@ -87,6 +97,13 @@ export default function NewWorkOrder() {
         { label: 'Thu', value: 'THU' },
         { label: 'Fri', value: 'FRI' },
         { label: 'Sat', value: 'SAT' },
+    ];
+
+    // Available icons for categories
+    const availableIcons = [
+        'wrench', 'tools', 'flash', 'water-pump', 'alert-circle', 
+        'cog', 'hammer', 'screwdriver', 'battery', 'pipe', 
+        'fan', 'engine', 'robot', 'crane', 'forklift'
     ];
 
     // Functions
@@ -297,12 +314,11 @@ export default function NewWorkOrder() {
                             mode="outlined"
                             style={styles.input}
                         />
-                        <TextInput
-                            label="Location"
-                            value={location}
-                            onChangeText={setLocation}
-                            mode="outlined"
-                            style={styles.input}
+                        <List.Item
+                            title="Location"
+                            description={location || "Select location"}
+                            onPress={() => setShowLocationDialog(true)}
+                            right={props => <List.Icon {...props} icon="chevron-right" />}
                         />
                         <TextInput
                             label="Asset"
@@ -315,7 +331,7 @@ export default function NewWorkOrder() {
                             title="Categories"
                             description={categories.length > 0 ? 
                                 categoryOptions
-                                    .filter(cat => categories.includes(cat.label))
+                                    .filter(cat => categories.includes(cat.id))
                                     .map(cat => cat.label)
                                     .join(', ') 
                                 : "Select categories"
@@ -326,7 +342,7 @@ export default function NewWorkOrder() {
                                     {categories.length > 0 && (
                                         <View style={styles.categoryIconsContainer}>
                                             {categoryOptions
-                                                .filter(cat => categories.includes(cat.label))
+                                                .filter(cat => categories.includes(cat.id))
                                                 .slice(0, 3)
                                                 .map((cat, index) => (
                                                     <List.Icon 
@@ -350,8 +366,13 @@ export default function NewWorkOrder() {
                         <Divider style={styles.divider} />
                         <List.Item
                             title="Vendors"
-                            description={vendors.length > 0 ? vendors.join(', ') : "Add vendors"}
-                            onPress={() => setShowVendorsMenu(true)}
+                            description={selectedVendors.length > 0 ? 
+                                vendors.filter(v => selectedVendors.includes(v.id))
+                                    .map(v => v.name)
+                                    .join(', ') 
+                                : "Select vendors"
+                            }
+                            onPress={() => navigation.navigate('Vendors')}
                             right={props => <List.Icon {...props} icon="chevron-right" />}
                         />
                         <Divider style={styles.divider} />
@@ -500,6 +521,203 @@ export default function NewWorkOrder() {
                         </Card.Content>
                     </Card>
                 )}
+                <Portal>
+                    <Dialog visible={showWorkTypeMenu} onDismiss={() => setShowWorkTypeMenu(false)}>
+                        <Dialog.Title>Select Work Type</Dialog.Title>
+                        <Dialog.Content>
+                            {workTypes.map((type, index) => (
+                                <List.Item
+                                    key={index}
+                                    title={type}
+                                    onPress={() => {
+                                        setWorkType(type);
+                                        setShowWorkTypeMenu(false);
+                                    }}
+                                />
+                            ))}
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowWorkTypeMenu(false)}>Cancel</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
+                <Portal>
+                    <Dialog visible={showCategoriesMenu} onDismiss={() => setShowCategoriesMenu(false)}>
+                        <Dialog.Title>Select Categories</Dialog.Title>
+                        <Dialog.Content>
+                            <ScrollView>
+                                {categoryOptions.map((category, index) => (
+                                    <List.Item
+                                        key={index}
+                                        title={category.label}
+                                        left={props => <List.Icon {...props} icon={category.icon} />}
+                                        onPress={() => {
+                                            const isSelected = categories.includes(category.id);
+                                            if (isSelected) {
+                                                setCategories(categories.filter(id => id !== category.id));
+                                            } else {
+                                                setCategories([...categories, category.id]);
+                                            }
+                                        }}
+                                        right={props => 
+                                            categories.includes(category.id) ? 
+                                            <List.Icon {...props} icon="check" /> : null
+                                        }
+                                    />
+                                ))}
+                            </ScrollView>
+                            <Button 
+                                mode="contained" 
+                                onPress={() => {
+                                    setShowCategoriesMenu(false);
+                                    setShowAddCategoryDialog(true);
+                                }}
+                                style={{ marginTop: 10 }}
+                            >
+                                Add New Category
+                            </Button>
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowCategoriesMenu(false)}>Done</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
+                <Portal>
+                    <Dialog visible={showAddCategoryDialog} onDismiss={() => setShowAddCategoryDialog(false)}>
+                        <Dialog.Title>Add New Category</Dialog.Title>
+                        <Dialog.Content>
+                            <TextInput
+                                label="Category Name"
+                                value={newCategoryName}
+                                onChangeText={setNewCategoryName}
+                                mode="outlined"
+                                style={{ marginBottom: 10 }}
+                            />
+                            <List.Item
+                                title="Select Icon"
+                                description={selectedIcon || "Choose an icon"}
+                                left={props => selectedIcon ? 
+                                    <List.Icon {...props} icon={selectedIcon} /> :
+                                    <List.Icon {...props} icon="shape-outline" />
+                                }
+                                onPress={() => setShowIconSelector(true)}
+                            />
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => {
+                                setShowAddCategoryDialog(false);
+                                setNewCategoryName('');
+                                setSelectedIcon('');
+                            }}>Cancel</Button>
+                            <Button 
+                                mode="contained"
+                                disabled={!newCategoryName || !selectedIcon}
+                                onPress={() => {
+                                    const newCategory = {
+                                        id: (categoryOptions.length + 1).toString(),
+                                        label: newCategoryName,
+                                        icon: selectedIcon
+                                    };
+                                    setCategoryOptions([...categoryOptions, newCategory]);
+                                    setCategories([...categories, newCategory.id]);
+                                    setNewCategoryName('');
+                                    setSelectedIcon('');
+                                    setShowAddCategoryDialog(false);
+                                }}
+                            >
+                                Add
+                            </Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
+                <Portal>
+                    <Dialog visible={showIconSelector} onDismiss={() => setShowIconSelector(false)}>
+                        <Dialog.Title>Select Icon</Dialog.Title>
+                        <Dialog.Content>
+                            <ScrollView>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around' }}>
+                                    {availableIcons.map((icon, index) => (
+                                        <TouchableOpacity
+                                            key={index}
+                                            onPress={() => {
+                                                setSelectedIcon(icon);
+                                                setShowIconSelector(false);
+                                            }}
+                                            style={styles.iconButton}
+                                        >
+                                            <Icon name={icon} size={30} color="#666666" />
+                                            <Text style={styles.iconText}>{icon}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowIconSelector(false)}>Cancel</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
+                <Portal>
+                    <Dialog visible={showLocationDialog} onDismiss={() => setShowLocationDialog(false)}>
+                        <Dialog.Title>Select Location</Dialog.Title>
+                        <Dialog.Content>
+                            <ScrollView>
+                                {locations.map((loc, index) => (
+                                    <List.Item
+                                        key={index}
+                                        title={loc}
+                                        onPress={() => {
+                                            setLocation(loc);
+                                            setShowLocationDialog(false);
+                                        }}
+                                    />
+                                ))}
+                            </ScrollView>
+                            <Button 
+                                mode="contained" 
+                                onPress={() => {
+                                    setShowLocationDialog(false);
+                                    setShowAddLocationDialog(true);
+                                }}
+                                style={{ marginTop: 10 }}
+                            >
+                                Add New Location
+                            </Button>
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowLocationDialog(false)}>Cancel</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
+                <Portal>
+                    <Dialog visible={showAddLocationDialog} onDismiss={() => setShowAddLocationDialog(false)}>
+                        <Dialog.Title>Add New Location</Dialog.Title>
+                        <Dialog.Content>
+                            <TextInput
+                                label="Location Name"
+                                value={newLocation}
+                                onChangeText={setNewLocation}
+                                mode="outlined"
+                            />
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setShowAddLocationDialog(false)}>Cancel</Button>
+                            <Button 
+                                mode="contained"
+                                onPress={() => {
+                                    if (newLocation.trim()) {
+                                        setLocations([...locations, newLocation.trim()]);
+                                        setLocation(newLocation.trim());
+                                        setNewLocation('');
+                                        setShowAddLocationDialog(false);
+                                    }
+                                }}
+                            >
+                                Add
+                            </Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
                 <RecurrenceDialog />
                 {showEstimatedTimePicker && (
                     <DateTimePicker
@@ -667,5 +885,20 @@ const styles = StyleSheet.create({
     },
     endDateButton: {
         marginTop: 16,
+    },
+    iconButton: {
+        padding: 10,
+        margin: 5,
+        borderRadius: 5,
+        backgroundColor: '#f0f0f0',
+        alignItems: 'center',
+        width: 80,
+        height: 80,
+        justifyContent: 'center',
+    },
+    iconText: {
+        fontSize: 10,
+        marginTop: 5,
+        textAlign: 'center',
     },
 });

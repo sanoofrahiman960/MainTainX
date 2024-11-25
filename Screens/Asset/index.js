@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Dimensions }
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector, useDispatch } from 'react-redux';
-import { deleteAssets, deleteLocation } from '../../redux/actions/locationAction';
-import { Searchbar, Card, Badge, FAB } from 'react-native-paper';
+import { useDispatch, useSelector } from 'react-redux';
+import { Card, Badge, Searchbar, FAB } from 'react-native-paper';
+import { deleteLocation } from '../../redux/slices/locationSlice';
+import { useLocationAsset } from '../../hooks/useLocationAsset';
 
 const Tab = createMaterialTopTabNavigator();
 const windowWidth = Dimensions.get('window').width;
@@ -13,7 +14,7 @@ const windowWidth = Dimensions.get('window').width;
 const AssetsScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const assets = useSelector(state => state.locations.assets);
+  const { assets } = useLocationAsset(); // Using our custom hook
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleDeleteAsset = (assetId) => {
@@ -71,6 +72,12 @@ const AssetsScreen = () => {
     </View>
   );
 
+  const filteredAssets = assets.filter(asset => 
+    asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    asset.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    asset.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <View style={styles.screenContainer}>
       <Searchbar
@@ -81,7 +88,7 @@ const AssetsScreen = () => {
       />
       {assets.length > 0 ? (
         <FlatList
-          data={assets}
+          data={filteredAssets}
           renderItem={renderAssetItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
@@ -105,7 +112,7 @@ const AssetsScreen = () => {
 const LocationsScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const locations = useSelector(state => state.locations.locations);
+  const { locations } = useLocationAsset(); // Using our custom hook
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleDeleteLocation = (locationId) => {
@@ -162,6 +169,12 @@ const LocationsScreen = () => {
     </View>
   );
 
+  const filteredLocations = locations.filter(location => 
+    location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    location.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    location.address?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <View style={styles.screenContainer}>
       <Searchbar
@@ -172,7 +185,7 @@ const LocationsScreen = () => {
       />
       {locations.length > 0 ? (
         <FlatList
-          data={locations}
+          data={filteredLocations}
           renderItem={renderLocationItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
@@ -204,15 +217,11 @@ const AssetsTabNavigator = ({route}) => {
         tabBarInactiveTintColor: '#000',
       }}
     >
-      {tab !== "Asset" ?
-      <>
+      
+      
         <Tab.Screen name="Locations" component={LocationsScreen} />
         <Tab.Screen name="Assets" component={AssetsScreen} />
-      </> :
-      <>
-        <Tab.Screen name="Assets" component={AssetsScreen} />
-        <Tab.Screen name="Locations" component={LocationsScreen} />
-      </>}
+     
     </Tab.Navigator>
   );
 };

@@ -24,34 +24,39 @@ import {
 } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { useDispatch } from 'react-redux';
-import { addAssets } from '../../redux/actions/locationAction';
-import DocumentPicker from 'react-native-document-picker';
-import Navigation from '../../Navigation/Navigation';
 import { useNavigation } from '@react-navigation/native';
+import { useLocationAsset } from '../../hooks/useLocationAsset';
+import uuid from 'react-native-uuid';
 
-const AddAsset = ({ navigation }) => {
-  const dispatch = useDispatch();
-  const [assetName, setAssetName] = useState('');
-  const [description, setDescription] = useState('');
-  const [images, setImages] = useState([]);
-  const [qrCode, setQrCode] = useState('');
-  const [barCode, setBarCode] = useState('');
-  const [files, setFiles] = useState([]);
+const AddAsset = ({ route }) => {
+  const navigation = useNavigation();
+  const { addNewAsset, updateAsset, locations } = useLocationAsset();
+  
+  // Get editing asset from route params if it exists
+  const editingAsset = route?.params?.asset;
+  const isEditing = route?.params?.isEditing;
+
+  // Initialize state with existing asset data if editing
+  const [assetName, setAssetName] = useState(editingAsset?.name || '');
+  const [description, setDescription] = useState(editingAsset?.description || '');
+  const [images, setImages] = useState(editingAsset?.images || []);
+  const [qrCode, setQrCode] = useState(editingAsset?.qrCode || '');
+  const [barCode, setBarCode] = useState(editingAsset?.barCode || '');
+  const [files, setFiles] = useState(editingAsset?.files || []);
+  const [task, setTask] = useState(editingAsset?.task || '');
+  const [barcode, setBarcode] = useState(editingAsset?.barcode || '');
+  const [location, setLocation] = useState(editingAsset?.locationId || '');
+  const [criticality, setCriticality] = useState(editingAsset?.criticality || '');
+  const [serialNumber, setSerialNumber] = useState(editingAsset?.serialNumber || '');
+  const [model, setModel] = useState(editingAsset?.model || '');
+  const [manufacturer, setManufacturer] = useState(editingAsset?.manufacturer || '');
+  const [year, setYear] = useState(editingAsset?.year || '');
+  const [assetType, setAssetType] = useState(editingAsset?.type || '');
+  const [attachments, setAttachments] = useState(editingAsset?.attachments || []);
+  const [team, setTeam] = useState(editingAsset?.team || []);
+  const [vendors, setVendors] = useState(editingAsset?.vendors || []);
+  const [parts, setParts] = useState(editingAsset?.parts || []);
   const [showImageOptions, setShowImageOptions] = useState(false);
-  const [task, setTask] = useState('');
-  const [barcode, setBarcode] = useState('');
-  const [location, setLocation] = useState('');
-  const [criticality, setCriticality] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [model, setModel] = useState('');
-  const [manufacturer, setManufacturer] = useState('');
-  const [year, setYear] = useState('');
-  const [assetType, setAssetType] = useState('');
-  const [attachments, setAttachments] = useState([]);
-  const [team, setTeam] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [parts, setParts] = useState([]);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showTeamPicker, setShowTeamPicker] = useState(false);
   const [showVendorPicker, setShowVendorPicker] = useState(false);
@@ -82,13 +87,7 @@ const AddAsset = ({ navigation }) => {
   const [newPartCategory, setNewPartCategory] = useState('');
   const [newPartQuantity, setNewPartQuantity] = useState('');
   const [partsSearchQuery, setPartsSearchQuery] = useState('');
-  const [locations, setLocations] = useState([
-    { id: '1', name: 'Main Building', type: 'Building' },
-    { id: '2', name: 'Production Floor', type: 'Area' },
-    { id: '3', name: 'Warehouse A', type: 'Storage' },
-    { id: '4', name: 'Maintenance Shop', type: 'Workshop' },
-    { id: '5', name: 'Assembly Line 1', type: 'Production' },
-  ]);
+ 
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddLocation, setShowAddLocation] = useState(false);
   const [newLocationName, setNewLocationName] = useState('');
@@ -128,40 +127,52 @@ const AddAsset = ({ navigation }) => {
   const [filteredLocations, setFilteredLocations] = useState(locations);
   const [filteredAssetTypes, setFilteredAssetTypes] = useState(assetTypes);
   const [filteredParts, setFilteredParts] = useState(partsList);
-  const Navigation=useNavigation()
 
   const handleSave = () => {
     if (!assetName.trim()) {
-      Alert.alert('Error', 'Please enter an asset name');
+      Alert.alert('Error', 'Asset name is required');
       return;
     }
 
-    const newAsset = {
-      id: Date.now().toString(),
+    const assetData = {
       name: assetName,
       description,
       images,
       qrCode,
       barCode,
       files,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       task,
       barcode,
-      location,
+      locationId: location,
       criticality,
       serialNumber,
       model,
       manufacturer,
       year,
-      assetType,
+      type: assetType,
       attachments,
       team,
       vendors,
       parts,
+      status: 'active',
     };
 
-    dispatch(addAssets(newAsset));
+    if (isEditing) {
+      // Update existing asset
+      updateAsset({
+        ...assetData,
+        id: editingAsset.id,
+      });
+      Alert.alert('Success', 'Asset updated successfully');
+    } else {
+      // Add new asset
+      addNewAsset({
+        ...assetData,
+        id: uuid.v4(),
+      });
+      Alert.alert('Success', 'Asset added successfully');
+    }
+
     navigation.goBack();
   };
 
@@ -245,7 +256,7 @@ const AddAsset = ({ navigation }) => {
       Alert.alert('Error', 'Please select a location type');
       return;
     }
-    dispatch(addLocation({ name: newLocationName.trim(), type: newLocationType }));
+    // dispatch(addLocation({ name: newLocationName.trim(), type: newLocationType }));
     setNewLocationName('');
     setNewLocationType('');
     setShowAddLocation(false);
@@ -261,7 +272,7 @@ const AddAsset = ({ navigation }) => {
       Alert.alert('Error', 'Please select a category');
       return;
     }
-    dispatch(addAssetType({ name: newAssetTypeName.trim(), category: newAssetCategory }));
+    // dispatch(addAssetType({ name: newAssetTypeName.trim(), category: newAssetCategory }));
     setNewAssetTypeName('');
     setNewAssetCategory('');
     setShowAddAssetType(false);
@@ -281,11 +292,11 @@ const AddAsset = ({ navigation }) => {
       Alert.alert('Error', 'Please enter a valid quantity');
       return;
     }
-    dispatch(addPart({
-      name: newPartName.trim(),
-      category: newPartCategory,
-      quantity: parseInt(newPartQuantity),
-    }));
+    // dispatch(addPart({
+    //   name: newPartName.trim(),
+    //   category: newPartCategory,
+    //   quantity: parseInt(newPartQuantity),
+    // }));
     setNewPartName('');
     setNewPartCategory('');
     setNewPartQuantity('');
@@ -312,7 +323,7 @@ const AddAsset = ({ navigation }) => {
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Add Asset" />
+        <Appbar.Content title={isEditing ? "Edit Asset" : "Add Asset"} />
         <Appbar.Action icon="check" onPress={handleSave} />
       </Appbar.Header>
 
@@ -481,7 +492,7 @@ const AddAsset = ({ navigation }) => {
         <List.Item
           title="Vendors"
           description={vendors.length > 0 ? `${vendors.length} vendors selected` : "Select vendors"}
-          onPress={() => { Navigation.navigate("Vendors")  }}
+          onPress={() => { navigation.navigate("Vendors")  }}
           right={props => <List.Icon {...props} icon="chevron-right" />}
         />
 

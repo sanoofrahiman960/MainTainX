@@ -200,7 +200,7 @@ export default function LandingScreen() {
               label="Asset"
               onPress={() => {
                 setModalVisible(false);
-                navigation.navigate('Assets', { tab: "Asset" });
+                navigation.navigate('Asset');
               }}
             />
             <CreateOption
@@ -208,7 +208,7 @@ export default function LandingScreen() {
               label="Location"
               onPress={() => {
                 setModalVisible(false);
-                navigation.navigate('Assets', { tab: "Location" });
+                navigation.navigate('Location');
               }}
             />
             <CreateOption
@@ -216,7 +216,7 @@ export default function LandingScreen() {
               label="Part"
               onPress={() => {
                 setModalVisible(false);
-                console.log('Create Part');
+                navigation.navigate('Parts');
               }}
             />
           </View>
