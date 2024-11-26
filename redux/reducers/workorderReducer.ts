@@ -20,7 +20,9 @@ const workorderReducer = (
 ): WorkOrderState => {
   switch (action.type) {
     case ADD_WORKORDER:
+      console.log("action",action.payload);
       return {
+        
         ...state,
         workOrders: [...state.workOrders, action.payload],
         error: null

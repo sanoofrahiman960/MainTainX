@@ -4,6 +4,9 @@ import { useNavigation } from '@react-navigation/native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
+import { useDispatch, useSelector } from 'react-redux';
+import { addWorkOrders } from '../../Redux/slices/workOrderSlice';
+import { selectVendor, unselectVendor, clearSelectedVendors } from '../../Redux/slices/vendorSlice';
 import {
     Provider as PaperProvider,
     Appbar,
@@ -21,11 +24,11 @@ import {
     Badge
 } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useSelector, useDispatch } from 'react-redux';
-import { selectVendor, unselectVendor, clearSelectedVendors } from '../../redux/slices/vendorSlice';
+import uuid from 'react-native-uuid';
 
 export default function NewWorkOrder() {
     const navigation = useNavigation();
+    const dispatch = useDispatch();
     
     // State variables
     const [task, setTask] = useState('');
@@ -176,6 +179,39 @@ export default function NewWorkOrder() {
         return dates;
     };
 
+    const handleSave = () => {
+        const newWorkOrder = {
+            id: uuid.v4(),
+            task,
+            description,
+            priorityIndex,
+            estimatedTime: estimatedTime.toISOString(),
+            attachments,
+            workType,
+            assignedTo,
+            location,
+            asset,
+            categories,
+            vendors: selectedVendors,
+            startDate: startDate.toISOString(),
+            dueDate: dueDate.toISOString(),
+            status: 'pending',
+            recurrence: recurrenceType ? {
+                type: recurrenceType,
+                interval: recurrenceInterval,
+                selectedDays,
+                monthDay,
+                endDate: recurrenceEndDate.toISOString()
+            } : null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+console.log("neww,",newWorkOrder);
+        //  dispatch(addWorkOrders(newWorkOrder));
+        // Navigate to Tabs and then to WorkOrders screen
+        navigation.navigate('Tabs', { screen: 'WorkOrders' });
+    };
+
     // Component rendering
     const RecurrenceDialog = () => (
         <Portal>
@@ -275,12 +311,7 @@ export default function NewWorkOrder() {
                 <Appbar.Header>
                     <Appbar.BackAction onPress={() => navigation.goBack()} />
                     <Appbar.Content title="New Work Order" />
-                    <Appbar.Action icon="check" onPress={() => {
-                        // Handle work order creation
-                        const dates = generateRecurringDates();
-                        console.log('Generated dates:', dates);
-                        navigation.goBack();
-                    }} />
+                    <Appbar.Action icon="check" onPress={handleSave} />
                 </Appbar.Header>
                 <Card style={styles.card}>
                     <Card.Content>

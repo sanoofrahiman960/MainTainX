@@ -3,12 +3,15 @@ import { StyleSheet, Text, View, TouchableOpacity, FlatList } from 'react-native
 import { useNavigation } from '@react-navigation/native';
 import { Card, Badge, Searchbar, FAB, IconButton } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useLocationAsset } from '../../hooks/useLocationAsset';
+import { useSelector, useDispatch } from 'react-redux';
+// import { deleteAsset } from '../../Redux/slices/assetSlice';
 import { Alert } from 'react-native';
 
 export default function AssetScreen() {
     const navigation = useNavigation();
-    const { assets, removeAsset, locations } = useLocationAsset();
+    const dispatch = useDispatch();
+    const assets = useSelector(state => state.assets.assets);
+    const locations = useSelector(state => state.locations.locations);
     const [searchQuery, setSearchQuery] = useState('');
 
     const handleDeleteAsset = (assetId) => {
@@ -19,7 +22,7 @@ export default function AssetScreen() {
                 { text: "Cancel", style: "cancel" },
                 {
                     text: "Delete",
-                    onPress: () => removeAsset(assetId),
+                    onPress: () => dispatch(deleteAsset(assetId)),
                     style: "destructive"
                 }
             ]

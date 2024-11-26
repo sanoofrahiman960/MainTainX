@@ -31,7 +31,7 @@ const WorkOrderDetails = () => {
   const { workOrderId } = route.params;
 
   const workOrder = useSelector((state: RootState) =>
-    state.workorder.workOrders.find((wo) => wo.id === workOrderId)
+    state.workOrders.workOrders.find((wo) => wo.id === workOrderId)
   );
 
   const [commentText, setCommentText] = useState('');

@@ -32,6 +32,7 @@ import { checkAuth } from '../redux/reducers/authReducer';
 import LocationScreen from '../Screens/Asset/LocationScreen';
 import AssetScreen from '../Screens/Asset/AssetScreen';
 import Parts from '../Screens/Parts/Parts';
+import WorkOrderView from '../Screens/WorkOrder/WorkOrderView';
 // import WorkOrderListing from '../Screens/WorkOrder/WorkOrderListing';
 
 // export default function Navigation() {
@@ -92,8 +93,8 @@ import Parts from '../Screens/Parts/Parts';
                 }}
             />
             <Tab.Screen
-                name="Work Orders"
-                component={WorkOrder}
+                name="WorkOrders"
+                component={WorkOrderView}
                 options={{
                     headerShown: false,
                     tabBarIcon: ({ color, size }) => (
@@ -212,6 +213,12 @@ import Parts from '../Screens/Parts/Parts';
                   component={Parts}
                   options={{ headerShown: false }}
                 />
+                   <Stack.Screen
+                  name="WorkListing"
+                  component={WorkOrder}
+                  options={{ headerShown: false }}
+                />
+                 
         </Stack.Navigator>
     );
 

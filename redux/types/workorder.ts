@@ -2,48 +2,33 @@ export interface Worker {
   id: string;
   name: string;
   role: string;
-  email: string;
-  phone?: string;
-  department?: string;
-  skills?: string[];
-  avatar?: string;
 }
 
 export interface WorkOrder {
   id: string;
-  title: string;
-  description: string;
-  status: 'Open' | 'In Progress' | 'Completed' | 'On Hold';
-  priority: 'High' | 'Medium' | 'Low';
-  dueDate: string;
-  assignedWorkers: Worker[];
+  task: string;
+  description?: string;
+  priorityIndex: number;
+  estimatedTime: string;
+  attachments?: string[];
+  workType?: string;
+  assignedTo?: string;
   location?: string;
   asset?: string;
-  estimatedHours?: number;
-  actualHours?: number;
-  materials?: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-    unit: string;
-    cost?: number;
-  }>;
-  attachments?: Array<{
-    name: string;
-    uri: string;
+  categories?: string[];
+  vendors?: string[];
+  startDate: string;
+  dueDate: string;
+  status: string;
+  recurrence?: {
     type: string;
-    size: number;
-  }>;
-  comments?: Array<{
-    id: string;
-    text: string;
-    worker: Worker;
-    timestamp: string;
-  }>;
+    interval: number;
+    selectedDays?: string[];
+    monthDay?: number;
+    endDate: string;
+  };
   createdAt: string;
   updatedAt: string;
-  completedAt?: string;
-  completedBy?: Worker;
 }
 
 export interface WorkOrderState {
