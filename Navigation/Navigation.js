@@ -25,6 +25,11 @@ import SignUp from '../Screens/Authentication/SignUp';
 
 // Redux actions
 import { checkAuth } from '../redux/reducers/authReducer';
+import WorkOrderListing from '../Screens/WorkOrder/WorkOrderListing';
+import TaskDetailsScreen from '../Screens/WorkOrder/TaskDetails';
+import AssignTo from '../Screens/WorkOrder/AssignTo/AssignTo';
+import InviteScreen from '../Screens/WorkOrder/AssignTo/InviteScreen';
+import ManualInviteScreen from '../Screens/WorkOrder/AssignTo/ManualInvite';
 
 export default function Navigation() {
     const Stack = createStackNavigator();
@@ -135,8 +140,33 @@ export default function Navigation() {
                 options={{ headerShown: false }}
             />
             <Stack.Screen
+                name="WorkOrderListing"
+                component={WorkOrderListing}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
                 name="Vendors"
                 component={Vendors}
+                options={{ headerShown: false }}
+            />
+             <Stack.Screen
+                name="WorkOrderDetails"
+                component={TaskDetailsScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="AssignTo"
+                component={AssignTo}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="InviteScreen"
+                component={InviteScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="ManualInvite"
+                component={ManualInviteScreen}
                 options={{ headerShown: false }}
             />
         </Stack.Navigator>

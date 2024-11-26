@@ -9,17 +9,19 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function AssignTo() {
+  const navigation = useNavigation()
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={()=>navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Assign to</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={()=>navigation.navigate('WorkOrderAdd')}>
           <Text style={styles.doneButton}>DONE</Text>
         </TouchableOpacity>
       </View>
@@ -52,10 +54,10 @@ export default function AssignTo() {
           <Text style={styles.personName}>Anandsathyan</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.inviteItem}>
+        <TouchableOpacity onPress={()=>navigation.navigate('InviteScreen')} style={styles.inviteItem}>
           <Icon name="account-plus" size={24} color="#2196F3" />
           <Text style={styles.inviteText}>
-            Invite Members to Mash Solutions
+            Invite Members
           </Text>
         </TouchableOpacity>
       </ScrollView>

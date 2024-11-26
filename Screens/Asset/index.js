@@ -13,7 +13,7 @@ const windowWidth = Dimensions.get('window').width;
 const AssetsScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const assets = useSelector(state => state.locations.assets);
+  const assets = useSelector(state => state.assets.assets);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleDeleteAsset = (assetId) => {
@@ -32,18 +32,18 @@ const AssetsScreen = () => {
   };
 
   const renderAssetItem = ({ item }) => (
-    <Card style={styles.card} onPress={() => navigation.navigate('AssetDetails', { asset: item })}>
+    <Card style={styles.card} onPress={() => alert(item.description)}>
       <Card.Content>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleContainer}>
             <Icon name="desktop-tower-monitor" size={24} color="#007bff" />
             <View style={styles.cardTitleText}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardSubtitle}>{item.code}</Text>
+              <Text style={styles.cardTitle}>{item.task}</Text>
+              <Text style={styles.cardSubtitle}>{item.description}</Text>
             </View>
           </View>
           <Badge style={[styles.badge, { backgroundColor: item.status === 'Active' ? '#4CAF50' : '#FFC107' }]}>
-            {item.status}
+            {item.criticality}
           </Badge>
         </View>
         <View style={styles.cardDetails}>
@@ -135,7 +135,7 @@ const LocationsScreen = () => {
             </View>
           </View>
           <Badge style={styles.countBadge}>
-            {item.assetCount} Assets
+            {item.assetCount} Location
           </Badge>
         </View>
         <View style={styles.cardDetails}>

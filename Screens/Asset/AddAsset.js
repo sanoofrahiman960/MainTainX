@@ -249,6 +249,7 @@ const AddAsset = () => {
       vendors,
       parts,
     };
+    alert(asset.task)
     dispatch(addAsset(asset));
     console.log('Saving asset:', asset);
     navigation.goBack();
