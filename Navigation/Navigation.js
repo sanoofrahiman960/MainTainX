@@ -30,6 +30,10 @@ import TaskDetailsScreen from '../Screens/WorkOrder/TaskDetails';
 import AssignTo from '../Screens/WorkOrder/AssignTo/AssignTo';
 import InviteScreen from '../Screens/WorkOrder/AssignTo/InviteScreen';
 import ManualInviteScreen from '../Screens/WorkOrder/AssignTo/ManualInvite';
+import CustomerSelectionPage from '../Screens/Customer/CustomerSelectionPage';
+import RecurrenceScreen from '../Screens/Recurrence/RecurrenceModal';
+import AssetListingPage from '../Screens/Asset/AssetListing';
+import LocationScreen from '../Screens/Asset/LocationScreen';
 
 export default function Navigation() {
     const Stack = createStackNavigator();
@@ -167,6 +171,21 @@ export default function Navigation() {
             <Stack.Screen
                 name="ManualInvite"
                 component={ManualInviteScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="customerSelect"
+                component={CustomerSelectionPage}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="recurrence"
+                component={RecurrenceScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="AssetListing"
+                component={AssetsTabNavigator}
                 options={{ headerShown: false }}
             />
         </Stack.Navigator>

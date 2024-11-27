@@ -3255,6 +3255,7 @@ __metadata:
     react-native-contacts: ^8.0.4
     react-native-document-picker: ^9.3.1
     react-native-dropdown-picker: ^5.4.6
+    react-native-dropdown-select-list: ^2.0.5
     react-native-elements: ^3.4.3
     react-native-gesture-handler: ^2.20.2
     react-native-image-picker: ^7.1.2
@@ -8494,6 +8495,13 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: d81ee3d68c17107a4d21dbdf9c2fe2ffe4bf4398973d10113139aadc0674221ce5038b945299fba2abc796930ec5e6d5f84291945bf903344493a15b8e2fca43
+  languageName: node
+  linkType: hard
+
+"react-native-dropdown-select-list@npm:^2.0.5":
+  version: 2.0.5
+  resolution: "react-native-dropdown-select-list@npm:2.0.5"
+  checksum: bbf3f05cceae402aab122a83026521da3125e25a1bead5cb2a739316788a8980fc86229c6144cbce9ea6ab58e91a3d7291e41de9a9715ca9e980c05af81486c3
   languageName: node
   linkType: hard
 

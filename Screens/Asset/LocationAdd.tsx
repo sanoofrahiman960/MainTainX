@@ -61,7 +61,7 @@ export default function LocationAdd() {
       dispatch(addLocation(newLocation));
 
       Alert.alert('Success', 'Location saved successfully',newLocation);
-      navigation.goBack();
+      navigation.navigate('WorkOrderAdd', { selectedLocationId: newLocation.id });
     } catch (error) {
       console.error('Error saving location:', error);
       Alert.alert('Error', 'Failed to save location');

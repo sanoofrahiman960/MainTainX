@@ -249,11 +249,11 @@ const AddAsset = () => {
       vendors,
       parts,
     };
-    alert(asset.task)
     dispatch(addAsset(asset));
     console.log('Saving asset:', asset);
-    navigation.goBack();
+    navigation.navigate('WorkOrderAdd', { selectedAssetId: asset.id });
   };
+
 
   return (
     <View style={styles.container}>
@@ -263,6 +263,7 @@ const AddAsset = () => {
         <Appbar.Action icon="check" onPress={handleSave} />
       </Appbar.Header>
       <ScrollView style={styles.scrollView}>
+        {/* Image Section */}
         <View style={styles.imageSection}>
           {assetImage ? (
             <TouchableOpacity onPress={() => setShowImageOptions(true)}>
@@ -279,6 +280,7 @@ const AddAsset = () => {
           )}
         </View>
 
+        {/* Basic Information Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
           <TextInput
@@ -315,6 +317,7 @@ const AddAsset = () => {
           </View>
         </View>
 
+        {/* Location & Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location & Details</Text>
           <List.Item
@@ -364,6 +367,7 @@ const AddAsset = () => {
           />
         </View>
 
+        {/* Asset Type Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Asset Type</Text>
           <List.Item
@@ -374,6 +378,7 @@ const AddAsset = () => {
           />
         </View>
 
+        {/* Teams & Vendors Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Teams & Vendors</Text>
           <List.Item
@@ -396,6 +401,7 @@ const AddAsset = () => {
           />
         </View>
 
+        {/* Attachments Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Attachments</Text>
           <Button
@@ -412,7 +418,7 @@ const AddAsset = () => {
               title={file.name}
               left={props => <List.Icon {...props} icon="file" />}
               right={props => (
-                <IconButton
+<IconButton
                   {...props}
                   icon="close"
                   onPress={() => {
@@ -427,7 +433,9 @@ const AddAsset = () => {
         </View>
       </ScrollView>
 
+      {/* Dialogs */}
       <Portal>
+        {/* Image Options Dialog */}
         <Dialog visible={showImageOptions} onDismiss={() => setShowImageOptions(false)}>
           <Dialog.Title>Add Photo</Dialog.Title>
           <Dialog.Content>
@@ -447,6 +455,7 @@ const AddAsset = () => {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Location Picker Dialog */}
         <Dialog visible={showLocationPicker} onDismiss={() => setShowLocationPicker(false)} style={styles.pickerDialog}>
           <Dialog.Title>Select Location</Dialog.Title>
           <Dialog.Content>
@@ -482,6 +491,7 @@ const AddAsset = () => {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Add Location Dialog */}
         <Dialog visible={showAddLocation} onDismiss={() => setShowAddLocation(false)}>
           <Dialog.Title>Add New Location</Dialog.Title>
           <Dialog.Content>
@@ -511,6 +521,7 @@ const AddAsset = () => {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Asset Type Picker Dialog */}
         <Dialog visible={showAssetTypePicker} onDismiss={() => setShowAssetTypePicker(false)} style={styles.pickerDialog}>
           <Dialog.Title>Select Asset Type</Dialog.Title>
           <Dialog.Content>
@@ -546,6 +557,7 @@ const AddAsset = () => {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Add Asset Type Dialog */}
         <Dialog visible={showAddAssetType} onDismiss={() => setShowAddAssetType(false)}>
           <Dialog.Title>Add New Asset Type</Dialog.Title>
           <Dialog.Content>
@@ -575,6 +587,7 @@ const AddAsset = () => {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Parts Picker Dialog */}
         <Dialog visible={showPartsPicker} onDismiss={() => setShowPartsPicker(false)} style={styles.pickerDialog}>
           <Dialog.Title>Select Parts</Dialog.Title>
           <Dialog.Content>
@@ -610,6 +623,7 @@ const AddAsset = () => {
           </Dialog.Actions>
         </Dialog>
 
+        {/* Add Part Dialog */}
         <Dialog visible={showAddPart} onDismiss={() => setShowAddPart(false)}>
           <Dialog.Title>Add New Part</Dialog.Title>
           <Dialog.Content>
@@ -751,3 +765,4 @@ const styles = StyleSheet.create({
 });
 
 export default AddAsset;
+

@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { deleteAssets, deleteLocation } from '../../redux/actions/locationAction';
 import { Searchbar, Card, Badge, FAB } from 'react-native-paper';
+import AssetListingPage from './AssetListing';
 
 const Tab = createMaterialTopTabNavigator();
 const windowWidth = Dimensions.get('window').width;
@@ -207,10 +208,10 @@ const AssetsTabNavigator = ({route}) => {
       {tab !== "Asset" ?
       <>
         <Tab.Screen name="Locations" component={LocationsScreen} />
-        <Tab.Screen name="Assets" component={AssetsScreen} />
+        <Tab.Screen name="Assets" component={AssetListingPage} />
       </> :
       <>
-        <Tab.Screen name="Assets" component={AssetsScreen} />
+        <Tab.Screen name="Assets" component={AssetListingPage} />
         <Tab.Screen name="Locations" component={LocationsScreen} />
       </>}
     </Tab.Navigator>

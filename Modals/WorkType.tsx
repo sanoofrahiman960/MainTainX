@@ -18,10 +18,19 @@ export const WorkTypeModal: React.FC<WorkTypeModalProps> = ({
 }) => {
   const renderItem = ({ item }: { item: string }) => (
     <TouchableOpacity
-      style={styles.item}
-      onPress={() => onSelect(item)}
+      style={[
+        styles.item,
+        currentWorkType === item && styles.selectedItem
+      ]}
+      onPress={() => {
+        onSelect(item);
+        onClose();
+      }}
     >
-      <Text style={styles.itemText}>{item}</Text>
+      <Text style={[
+        styles.itemText,
+        currentWorkType === item && styles.selectedItemText
+      ]}>{item}</Text>
     </TouchableOpacity>
   );
 
@@ -34,6 +43,7 @@ export const WorkTypeModal: React.FC<WorkTypeModalProps> = ({
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
+          <Text style={styles.title}>Select Work Type</Text>
           <FlatList
             data={workTypes}
             renderItem={renderItem}
@@ -60,13 +70,26 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingTop: 20,
   },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
   item: {
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  selectedItem: {
+    backgroundColor: '#e3f2fd',
+  },
   itemText: {
     fontSize: 18,
+  },
+  selectedItemText: {
+    color: '#2196F3',
+    fontWeight: 'bold',
   },
   cancelButton: {
     alignItems: 'center',
