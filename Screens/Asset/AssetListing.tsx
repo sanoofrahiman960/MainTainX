@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Alert, Dimensions, ScrollView, SectionList } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -29,33 +30,7 @@ const AssetListingPage = () => {
 
   useEffect(() => {
     const mockNewAsset = [
-      {
-        id: 'new-asset-1',
-        task: 'New Asset',
-        description: 'This is a newly added asset',
-        status: 'Active',
-        location: 'Main Office',
-        lastMaintenance: '2023-05-15',
-        criticality: 'High',
-      },
-      {
-        id: 'new-asset-1',
-        task: 'New Asset1',
-        description: 'This is a newly added asset',
-        status: 'Active',
-        location: 'Main Office',
-        lastMaintenance: '2023-05-15',
-        criticality: 'High',
-      },
-      {
-        id: 'new-asset-1',
-        task: 'New Asset2',
-        description: 'This is a newly added asset',
-        status: 'Active',
-        location: 'Main Office',
-        lastMaintenance: '2023-05-15',
-        criticality: 'High',
-      },
+     
       // Additional mock assets
     ];
 
@@ -75,8 +50,17 @@ const AssetListingPage = () => {
       ]
     );
   };
-
-  const sortAssets = (assets) => {
+const handleAssetSelect = async (id:any) =>{
+    console.log('id in asset list',id)
+    try {
+        await AsyncStorage.setItem('selectedAssetId', id);
+      } catch (error) {
+        console.error('Error saving Asset ID to AsyncStorage:', error);
+      }
+    
+    navigation.navigate('WorkOrderAdd', { assets: id })
+}
+  const sortAssets = (assets:any) => {
     const assetsCopy = [...assets]; // Prevent mutating original array
     switch (sortBy) {
       case 'name':
@@ -90,21 +74,21 @@ const AssetListingPage = () => {
     }
   };
 
-  const filterAssets = (assets) => {
+  const filterAssets = (assets:any) => {
     switch (filterBy) {
       case 'active':
-        return assets.filter(asset => asset.status === 'Active');
-      case 'inactive':
-        return assets.filter(asset => asset.status !== 'Active');
+        return assets.filter((asset:any) => asset.status === 'Active');
       case 'critical':
-        return assets.filter(asset => asset.criticality === 'Critical');
+            return assets.filter((asset:any) => asset.status === 'critical');
+      case 'inactive':
+        return assets.filter((asset:any) => asset.status !== 'Active' && asset.status !== 'critical');
       default:
         return assets;
     }
   };
 
-  const renderAssetItem = ({ item, index, section }) => (
-    <Card style={[styles.card, section.title === 'New Assets' && styles.newAssetCard]} onPress={() => navigation.navigate('WorkOrderAdd', { asset: item })}>
+  const renderAssetItem = ({ item, index, section }:any) => (
+    <Card style={[styles.card, section.title === 'New Assets' && styles.newAssetCard]} onPress={() => handleAssetSelect(item.id)}>
       <Card.Content>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleContainer}>

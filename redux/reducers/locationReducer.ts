@@ -1,8 +1,13 @@
 import { ADD_LOCATION,DELETE_LOCATION,ADD_ASSETS,DELETE_ASSETS } from '../actions/locationAction';
 
 const initialState = {
-  locations: [],
-  assets:[],
+  locations: [ { id: '1', name: 'Main Building', type: 'Building' },
+  { id: '2', name: 'Production Floor', type: 'Area' },
+  { id: '3', name: 'Warehouse A', type: 'Storage' },
+  { id: '4', name: 'Maintenance Shop', type: 'Workshop' },
+  { id: '5', name: 'Assembly Line 1', type: 'Production' },
+],
+  // assets:[],
 };
 
 const locationReducer = (state = initialState, action: { type: any; payload: any; }) => {

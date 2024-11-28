@@ -34,6 +34,8 @@ import CustomerSelectionPage from '../Screens/Customer/CustomerSelectionPage';
 import RecurrenceScreen from '../Screens/Recurrence/RecurrenceModal';
 import AssetListingPage from '../Screens/Asset/AssetListing';
 import LocationScreen from '../Screens/Asset/LocationScreen';
+import VendorsListing from '../Screens/Vendors/VendorsListing';
+import AddCategories from '../Screens/Category/CategoryLising';
 
 export default function Navigation() {
     const Stack = createStackNavigator();
@@ -186,6 +188,16 @@ export default function Navigation() {
             <Stack.Screen
                 name="AssetListing"
                 component={AssetsTabNavigator}
+                options={{ headerShown: false }}
+            />
+             <Stack.Screen
+                name="VendorsListing"
+                component={VendorsListing}
+                options={{ headerShown: false }}
+            />
+             <Stack.Screen
+                name="AddCategories"
+                component={AddCategories}
                 options={{ headerShown: false }}
             />
         </Stack.Navigator>

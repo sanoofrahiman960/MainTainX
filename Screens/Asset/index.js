@@ -7,6 +7,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { deleteAssets, deleteLocation } from '../../redux/actions/locationAction';
 import { Searchbar, Card, Badge, FAB } from 'react-native-paper';
 import AssetListingPage from './AssetListing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const Tab = createMaterialTopTabNavigator();
 const windowWidth = Dimensions.get('window').width;
@@ -106,9 +108,18 @@ const AssetsScreen = () => {
 const LocationsScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const locations = useSelector(state => state.locations.locations);
+  const locations = useSelector(state => state.assets.locations);
   const [searchQuery, setSearchQuery] = useState('');
+  const handleLocationSelect = async(id) =>{
 
+    try {
+      await AsyncStorage.setItem('selectedLocationId', id);
+    } catch (error) {
+      console.error('Error saving Location ID to AsyncStorage:', error);
+    }
+  
+    navigation.navigate('WorkOrderAdd', { location: id})
+  }
   const handleDeleteLocation = (locationId) => {
     Alert.alert(
       "Delete Location",
@@ -125,7 +136,7 @@ const LocationsScreen = () => {
   };
 
   const renderLocationItem = ({ item }) => (
-    <Card style={styles.card} onPress={() => navigation.navigate('LocationDetails', { location: item })}>
+    <Card style={styles.card} onPress={() => handleLocationSelect(item.id)}>
       <Card.Content>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleContainer}>

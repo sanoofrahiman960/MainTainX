@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -18,6 +18,7 @@ import {
   IconButton,
   Surface,
   Card,
+  Chip,
 } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -26,6 +27,7 @@ import { format } from 'date-fns';
 import { addWorkOrder } from '../../redux/actions/workOrderAction';
 import { EstimatedTimeModal } from '../../Modals/EstimateTime';
 import { WorkTypeModal } from '../../Modals/WorkType';
+import VendorListItem from '../Vendors/VendorsListItem';
 
 export default function NewWorkOrder() {
   const navigation = useNavigation();
@@ -33,6 +35,7 @@ export default function NewWorkOrder() {
   const dispatch = useDispatch();
   const locations = useSelector(state => state.locations.locations);
   const assets = useSelector(state => state.assets.assets);
+  const categories = useSelector(state => state.assets.category);
 
   // State variables
   const [task, setTask] = useState('');
@@ -45,10 +48,12 @@ export default function NewWorkOrder() {
   const [assignedTo, setAssignedTo] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [selectedAssetId, setSelectedAssetId] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [categoriesState, setCategoriesState] = useState([]); //Renamed to avoid conflict
   const [vendors, setVendors] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedCustomerName, setSelectedCustomerName] = useState('');
+  const [selectedVendors, setSelectedVendors] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
 
   // UI state
   const [isEstimatedTimeModalVisible, setEstimatedTimeModalVisible] = useState(false);
@@ -82,13 +87,19 @@ export default function NewWorkOrder() {
         const storedCustomerName = await AsyncStorage.getItem('selectedCustomerName');
         const storedAssignedTo = await AsyncStorage.getItem('selectedUserName');
         const storedWorkType = await AsyncStorage.getItem('workType');
-        
+        const storedPriorityIndex = await AsyncStorage.getItem('priorityIndex');
+        const storedSelectedCategories = await AsyncStorage.getItem('selectedCategories');
+        const storedSelectedVendors = await AsyncStorage.getItem('selectedVendors');
+      
         if (storedLocationId) setSelectedLocationId(storedLocationId);
         if (storedAssetId) setSelectedAssetId(storedAssetId);
         if (storedCustomerId) setSelectedCustomerId(storedCustomerId);
         if (storedCustomerName) setSelectedCustomerName(storedCustomerName);
         if (storedAssignedTo) setAssignedTo(storedAssignedTo);
         if (storedWorkType) setWorkType(storedWorkType);
+        if (storedPriorityIndex) setPriorityIndex(parseInt(storedPriorityIndex));
+        if (storedSelectedCategories) setSelectedCategories(JSON.parse(storedSelectedCategories));
+        if (storedSelectedVendors) setSelectedVendors(JSON.parse(storedSelectedVendors));
       } catch (error) {
         console.error('Error loading persisted data:', error);
       }
@@ -97,29 +108,43 @@ export default function NewWorkOrder() {
     loadPersistedData();
   }, []);
 
-  useEffect(() => {
-    if (route.params?.selectedLocationId) {
-      handleSetSelectedLocationId(route.params.selectedLocationId);
-    }
-    if (route.params?.selectedAssetId) {
-      handleSetSelectedAssetId(route.params.selectedAssetId);
-    }
-    if (route.params?.selectedCustomer) {
-      setSelectedCustomerId(route.params.selectedCustomer.id);
-      setSelectedCustomerName(route.params.selectedCustomer.name);
-      // Automatically select the first asset for the selected customer
-      const customerAssets = assets.filter(asset => asset.customerId === route.params.selectedCustomer.id);
-      if (customerAssets.length > 0) {
-        handleSetSelectedAssetId(customerAssets[0].id);
-      } else {
-        // Clear selected asset if no assets for the selected customer
-        handleSetSelectedAssetId(null);
-      }
-    }
-    if (route.params?.selectedUserId) {
-      loadAssignedUser();
-    }
-  }, [route.params]);
+  useFocusEffect(
+    React.useCallback(() => {
+      const updateStateFromParams = async () => {
+        if (route.params?.selectedLocationId) {
+          await handleSetSelectedLocationId(route.params.selectedLocationId);
+        }
+        if (route.params?.selectedAssetId) {
+          await handleSetSelectedAssetId(route.params.selectedAssetId);
+        }
+        if (route.params?.selectedCustomer) {
+          setSelectedCustomerId(route.params.selectedCustomer.id);
+          setSelectedCustomerName(route.params.selectedCustomer.name);
+          // Automatically select the first asset for the selected customer
+          const customerAssets = assets.filter(asset => asset.customerId === route.params.selectedCustomer.id);
+          if (customerAssets.length > 0) {
+            await handleSetSelectedAssetId(customerAssets[0].id);
+          } else {
+            // Clear selected asset if no assets for the selected customer
+            await handleSetSelectedAssetId(null);
+          }
+        }
+        if (route.params?.selectedUserId) {
+          await loadAssignedUser();
+        }
+        if (route.params?.selectedVendors) {
+          setSelectedVendors(route.params.selectedVendors);
+          await AsyncStorage.setItem('selectedVendors', JSON.stringify(route.params.selectedVendors));
+        }
+        if (route.params?.selectedCategories) {
+          setSelectedCategories(route.params.selectedCategories);
+          await AsyncStorage.setItem('selectedCategories', JSON.stringify(route.params.selectedCategories));
+        }
+      };
+
+      updateStateFromParams();
+    }, [route.params])
+  );
 
   const loadAssignedUser = async () => {
     try {
@@ -209,8 +234,8 @@ export default function NewWorkOrder() {
       assignedTo,
       location: selectedLocation ? selectedLocation.name : '',
       asset: selectedAsset ? selectedAsset.task : '',
-      categories,
-      vendors,
+      categories: selectedCategories,
+      vendors: selectedVendors,
       priority: priorities[priorityIndex].label,
       estimatedTime: `${estimatedTime.hours}h ${estimatedTime.minutes}m`,
       attachments,
@@ -258,6 +283,14 @@ export default function NewWorkOrder() {
     { label: 'Fri', value: 'FRI' },
     { label: 'Sat', value: 'SAT' },
   ];
+
+  const handleCategories = () => {
+    navigation.navigate('AddCategories', { selectedCategories });
+  };
+
+  const handleVendors = () => {
+    navigation.navigate('VendorsListing', { selectedVendors });
+  };
 
   const RecurrenceDialog = () => (
     <Portal>
@@ -354,6 +387,19 @@ export default function NewWorkOrder() {
   const filteredAssets = selectedCustomerId
     ? assets.filter(asset => asset.customerId === selectedCustomerId)
     : assets;
+
+  const setPriorityIndexAndPersist = async (index) => {
+    setPriorityIndex(index);
+    try {
+      await AsyncStorage.setItem('priorityIndex', index.toString());
+    } catch (error) {
+      console.error('Error saving priority index to AsyncStorage:', error);
+    }
+  };
+
+  const handleRemoveVendor = (vendorId) => {
+    setSelectedVendors(prevVendors => prevVendors.filter(v => v.id !== vendorId));
+  };
 
   return (
     <PaperProvider>
@@ -468,7 +514,7 @@ export default function NewWorkOrder() {
                 { backgroundColor: priority.color },
                 priorityIndex === priority.value && styles.priorityButtonSelected,
               ]}
-              onPress={() => setPriorityIndex(priority.value)}
+              onPress={() => setPriorityIndexAndPersist(priority.value)}
             >
               <Text style={styles.priorityText}>{priority.label}</Text>
             </TouchableOpacity>
@@ -476,7 +522,7 @@ export default function NewWorkOrder() {
         </View>
         <TouchableOpacity
           style={styles.field}
-          onPress={() => navigation.navigate('LocationAdd', { onSelect: handleSetSelectedLocationId })}
+          onPress={() => navigation.navigate('Assets', {tab:"Location"},{ onSelect: handleSetSelectedLocationId })}
         >
           <Text style={styles.fieldLabel}>Location</Text>
           <View style={styles.fieldValue}>
@@ -489,9 +535,10 @@ export default function NewWorkOrder() {
         <Divider />
         <TouchableOpacity
           style={styles.field}
-          onPress={() => navigation.navigate('AssetListing', { 
+          onPress={() => navigation.navigate('Assets', { 
             onSelect: handleSetSelectedAssetId,
-            assets: filteredAssets
+            assets: filteredAssets,
+            tab:"Asset"
           })}
         >
           <Text style={styles.fieldLabel}>Asset</Text>
@@ -519,10 +566,33 @@ export default function NewWorkOrder() {
         <Divider />
         <List.Item
           title="Categories"
-          description={categories.length > 0 ? categories.join(', ') : "Add Categories"}
-          onPress={() => setShowCategoriesMenu(true)}
+          description={
+            selectedCategories.length > 0
+              ? selectedCategories.map(id => categories.find(c => c.id === id)?.name).join(', ')
+              : "Add Categories"
+          }
+          onPress={handleCategories}
           right={() => <List.Icon icon="chevron-right" />}
         />
+        <View style={styles.categoriesContainer}>
+          {selectedCategories.map(categoryId => {
+            const category = categories.find(c => c.id === categoryId);
+            return (
+              <Chip
+                key={categoryId}
+                style={styles.categoryChip}
+                textStyle={styles.categoryChipText}
+                onClose={() => {
+                  const updatedCategories = selectedCategories.filter(id => id !== categoryId);
+                  setSelectedCategories(updatedCategories);
+                  AsyncStorage.setItem('selectedCategories', JSON.stringify(updatedCategories));
+                }}
+              >
+                {category?.name}
+              </Chip>
+            );
+          })}
+        </View>
         <Divider />
         <List.Item
           title="Files"
@@ -531,11 +601,10 @@ export default function NewWorkOrder() {
           right={() => <List.Icon icon="chevron-right" />}
         />
         <Divider />
-        <List.Item
-          title="Vendors"
-          description={vendors.length > 0 ? vendors.join(', ') : "Add Vendors"}
-          onPress={() => setShowVendorsMenu(true)}
-          right={() => <List.Icon icon="chevron-right" />}
+        <VendorListItem
+          title={selectedVendors.length > 0 ? selectedVendors[0].name : "Add Vendors"}
+          count={selectedVendors.length > 1 ? selectedVendors.length - 1 : undefined}
+          onPress={handleVendors}
         />
         <Divider />
       </ScrollView>
@@ -604,6 +673,7 @@ export default function NewWorkOrder() {
           />
         ))}
       </Menu>
+      
       <Menu
         visible={showCategoriesMenu}
         onDismiss={() => setShowCategoriesMenu(false)}
@@ -613,7 +683,7 @@ export default function NewWorkOrder() {
           <Menu.Item
             key={category.id}
             onPress={() => {
-              setCategories([...categories, category.label]);
+              setCategoriesState([...categoriesState, category.label]);
               setShowCategoriesMenu(false);
             }}
             title={category.label}
@@ -800,6 +870,17 @@ const styles = StyleSheet.create({
   },
   endDateButton: {
     marginTop: 16,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+  },
+  categoryChip: {
+    margin: 4,
+  },
+  categoryChipText: {
+    fontSize: 12,
   },
 });
 
