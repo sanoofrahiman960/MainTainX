@@ -26,6 +26,7 @@ import Home from '../Screens/Home/Home';
 import WorkOrderDetails from '../Screens/WorkOrder/WorkOrderDetails';
 import SignIn from '../Screens/Authentication/SignIn';
 import SignUp from '../Screens/Authentication/SignUp';
+import EditWorkOrder from '../Screens/WorkOrder/EditWorkOrder';
 
 // Redux actions
 import { checkAuth } from '../redux/reducers/authReducer';
@@ -218,7 +219,11 @@ import WorkOrderView from '../Screens/WorkOrder/WorkOrderView';
                   component={WorkOrder}
                   options={{ headerShown: false }}
                 />
-                 
+                <Stack.Screen
+                  name="EditWorkOrder"
+                  component={EditWorkOrder}
+                  options={{ headerShown: false }}
+                />
         </Stack.Navigator>
     );
 

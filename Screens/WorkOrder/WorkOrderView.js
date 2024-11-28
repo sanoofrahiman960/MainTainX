@@ -9,10 +9,10 @@ import { format } from 'date-fns';
 
 export default function WorkOrderView() {
     const navigation = useNavigation();
-    const workOrders = useSelector(state => state.workOrders?.workOrders || []);
+    const workOrders = useSelector(state => state.workOrder?.workOrders || []);
     console.log('Work Orders:', workOrders);
-    const locations = useSelector(state => state.locations?.locations || []);
-    const assets = useSelector(state => state.assets?.assets || []);
+    const locations = useSelector(state => state.location?.locations || []);
+    const assets = useSelector(state => state.asset?.assets || []);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [showDatePicker, setShowDatePicker] = useState(false);

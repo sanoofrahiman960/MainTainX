@@ -3,7 +3,7 @@ import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import locationReducer from './slices/locationSlice';
 import assetReducer from './slices/assetSlice';
-import workorderReducer from './reducers/workorderReducer';
+import workOrderReducer from './slices/workOrderSlice';
 import authReducer from './reducers/authReducer';
 import vendorReducer from './slices/vendorSlice';
 import partReducer from './slices/partSlice';
@@ -11,13 +11,13 @@ import partReducer from './slices/partSlice';
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['location', 'asset'], // only persist location and asset state
+  whitelist: ['location', 'asset', 'workOrder'], 
 };
 
 const rootReducer = combineReducers({
   location: locationReducer,
   asset: assetReducer,
-  workorder: workorderReducer,
+  workOrder: workOrderReducer, 
   auth: authReducer,
   vendor: vendorReducer,
   part: partReducer,

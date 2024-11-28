@@ -1,32 +1,58 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Badge, Searchbar, FAB, IconButton } from 'react-native-paper';
+import { 
+    Text,
+    Card, 
+    Badge, 
+    Searchbar, 
+    FAB, 
+    IconButton,
+    Appbar,
+    Menu,
+    Chip,
+    Portal,
+    Dialog,
+    Button,
+    ActivityIndicator
+} from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSelector, useDispatch } from 'react-redux';
 // import { deleteAsset } from '../../Redux/slices/assetSlice';
-import { Alert } from 'react-native';
 
 export default function AssetScreen() {
     const navigation = useNavigation();
     const dispatch = useDispatch();
     const assets = useSelector(state => state.assets.assets);
     const locations = useSelector(state => state.locations.locations);
+    
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [sortBy, setSortBy] = useState('name');
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState(null);
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const handleDeleteAsset = (assetId) => {
-        Alert.alert(
-            "Delete Asset",
-            "Are you sure you want to delete this asset?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    onPress: () => dispatch(deleteAsset(assetId)),
-                    style: "destructive"
-                }
-            ]
-        );
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        // Add your refresh logic here
+        setTimeout(() => {
+            setRefreshing(false);
+        }, 2000);
+    }, []);
+
+    const handleDeleteAsset = (asset) => {
+        setSelectedAsset(asset);
+        setDeleteDialogVisible(true);
+    };
+
+    const confirmDelete = () => {
+        if (selectedAsset) {
+            dispatch(deleteAsset(selectedAsset.id));
+            setDeleteDialogVisible(false);
+            setSelectedAsset(null);
+        }
     };
 
     const handleEditAsset = (asset) => {
@@ -38,45 +64,133 @@ export default function AssetScreen() {
         return location ? location.name : 'No Location';
     };
 
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'active':
+                return '#4CAF50';
+            case 'inactive':
+                return '#FF9800';
+            case 'maintenance':
+                return '#2196F3';
+            case 'error':
+                return '#f44336';
+            default:
+                return '#757575';
+        }
+    };
+
+    const filteredAssets = assets
+        .filter(asset => {
+            const matchesSearch = 
+                asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                getLocationName(asset.locationId).toLowerCase().includes(searchQuery.toLowerCase());
+            
+            if (filterStatus === 'all') return matchesSearch;
+            return matchesSearch && asset.status?.toLowerCase() === filterStatus.toLowerCase();
+        })
+        .sort((a, b) => {
+            switch (sortBy) {
+                case 'name':
+                    return a.name.localeCompare(b.name);
+                case 'status':
+                    return (a.status || '').localeCompare(b.status || '');
+                case 'location':
+                    return getLocationName(a.locationId).localeCompare(getLocationName(b.locationId));
+                default:
+                    return 0;
+            }
+        });
+
     const renderAssetItem = ({ item }) => (
-        <Card style={styles.card}>
+        <Card 
+            style={styles.card}
+            onPress={() => navigation.navigate('AssetDetails', { asset: item })}
+        >
             <Card.Content>
                 <View style={styles.cardHeader}>
-                    <TouchableOpacity 
-                        style={styles.cardTitleContainer}
-                        onPress={() => navigation.navigate('AssetDetails', { asset: item })}
-                    >
-                        <Icon name="cube-outline" size={24} color="#007bff" />
+                    <View style={styles.cardTitleContainer}>
+                        <Icon name="cube-outline" size={24} color="#42b0f5" />
                         <View style={styles.cardTitleText}>
                             <Text style={styles.cardTitle}>{item.name}</Text>
                             <Text style={styles.cardSubtitle}>{item.type}</Text>
                         </View>
-                    </TouchableOpacity>
-                    <View style={styles.cardActions}>
-                        <IconButton
-                            icon="pencil"
-                            size={20}
-                            onPress={() => handleEditAsset(item)}
-                            style={styles.actionButton}
-                        />
-                        <IconButton
-                            icon="delete"
-                            size={20}
-                            onPress={() => handleDeleteAsset(item.id)}
-                            style={styles.actionButton}
-                        />
                     </View>
+                    <Menu
+                        visible={menuVisible && selectedAsset?.id === item.id}
+                        onDismiss={() => {
+                            setMenuVisible(false);
+                            setSelectedAsset(null);
+                        }}
+                        anchor={
+                            <IconButton
+                                icon="dots-vertical"
+                                size={20}
+                                onPress={() => {
+                                    setSelectedAsset(item);
+                                    setMenuVisible(true);
+                                }}
+                            />
+                        }
+                    >
+                        <Menu.Item 
+                            onPress={() => {
+                                setMenuVisible(false);
+                                handleEditAsset(item);
+                            }} 
+                            title="Edit"
+                            leadingIcon="pencil"
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setMenuVisible(false);
+                                navigation.navigate('NewWorkOrder', { 
+                                    asset: item,
+                                    prefilledData: {
+                                        asset: item.name,
+                                        location: getLocationName(item.locationId)
+                                    }
+                                });
+                            }} 
+                            title="Create Work Order"
+                            leadingIcon="clipboard-plus"
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setMenuVisible(false);
+                                handleDeleteAsset(item);
+                            }} 
+                            title="Delete"
+                            leadingIcon="delete"
+                        />
+                    </Menu>
                 </View>
+                
                 <View style={styles.cardDetails}>
                     <View style={styles.detailItem}>
                         <Icon name="map-marker" size={16} color="#666" />
                         <Text style={styles.detailText}>{getLocationName(item.locationId)}</Text>
                     </View>
-                    {item.status && (
-                        <Badge style={[styles.statusBadge, { backgroundColor: item.status === 'active' ? '#4CAF50' : '#FF9800' }]}>
-                            {item.status}
-                        </Badge>
-                    )}
+                    <View style={styles.badgeContainer}>
+                        {item.status && (
+                            <Badge 
+                                style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}
+                            >
+                                {item.status}
+                            </Badge>
+                        )}
+                        {item.criticality && (
+                            <Badge 
+                                style={[styles.criticalityBadge, { 
+                                    backgroundColor: 
+                                        item.criticality.toLowerCase() === 'high' ? '#f44336' :
+                                        item.criticality.toLowerCase() === 'medium' ? '#FF9800' : '#4CAF50'
+                                }]}
+                            >
+                                {item.criticality}
+                            </Badge>
+                        )}
+                    </View>
                 </View>
             </Card.Content>
         </Card>
@@ -84,47 +198,110 @@ export default function AssetScreen() {
 
     const EmptyState = () => (
         <View style={styles.emptyState}>
-            <Icon name="cube-outline" size={64} color="#007bff" />
+            <Icon name="cube-outline" size={64} color="#42b0f5" />
             <Text style={styles.emptyTitle}>No assets found</Text>
             <Text style={styles.emptySubtitle}>Start adding assets to track and maintain</Text>
-            <TouchableOpacity
-                style={styles.addButton}
+            <Button
+                mode="contained"
                 onPress={() => navigation.navigate('AssetAdd')}
+                style={styles.addButton}
+                icon="plus"
             >
-                <Text style={styles.addButtonText}>Add Asset</Text>
-            </TouchableOpacity>
+                Add Asset
+            </Button>
         </View>
-    );
-
-    const filteredAssets = assets.filter(asset =>
-        asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        getLocationName(asset.locationId).toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
         <View style={styles.container}>
-            <Searchbar
-                placeholder="Search assets..."
-                onChangeText={setSearchQuery}
-                value={searchQuery}
-                style={styles.searchBar}
-            />
-            {assets.length > 0 ? (
-                <FlatList
-                    data={filteredAssets}
-                    renderItem={renderAssetItem}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={styles.listContainer}
+            <Appbar.Header style={styles.header}>
+                <Appbar.Content title="Assets" color="#fff" />
+                <Appbar.Action icon="filter" color="#fff" onPress={() => {}} />
+                <Appbar.Action 
+                    icon="sort" 
+                    color="#fff"
+                    onPress={() => {}}
                 />
-            ) : (
-                <EmptyState />
-            )}
+            </Appbar.Header>
+
+            <View style={styles.searchContainer}>
+                <Searchbar
+                    placeholder="Search assets..."
+                    onChangeText={setSearchQuery}
+                    value={searchQuery}
+                    style={styles.searchbar}
+                />
+                <View style={styles.filterChips}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <Chip 
+                            selected={filterStatus === 'all'}
+                            onPress={() => setFilterStatus('all')}
+                            style={styles.chip}
+                        >
+                            All
+                        </Chip>
+                        <Chip 
+                            selected={filterStatus === 'active'}
+                            onPress={() => setFilterStatus('active')}
+                            style={styles.chip}
+                        >
+                            Active
+                        </Chip>
+                        <Chip 
+                            selected={filterStatus === 'maintenance'}
+                            onPress={() => setFilterStatus('maintenance')}
+                            style={styles.chip}
+                        >
+                            Maintenance
+                        </Chip>
+                        <Chip 
+                            selected={filterStatus === 'inactive'}
+                            onPress={() => setFilterStatus('inactive')}
+                            style={styles.chip}
+                        >
+                            Inactive
+                        </Chip>
+                    </ScrollView>
+                </View>
+            </View>
+
+            <FlatList
+                data={filteredAssets}
+                renderItem={renderAssetItem}
+                keyExtractor={item => item.id}
+                contentContainerStyle={styles.list}
+                ListEmptyComponent={EmptyState}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#42b0f5']}
+                    />
+                }
+            />
+
             <FAB
                 icon="plus"
                 style={styles.fab}
-                onPress={() => navigation.navigate('AssetsAdd')}
+                onPress={() => navigation.navigate('AssetAdd')}
+                label="Add Asset"
             />
+
+            <Portal>
+                <Dialog
+                    visible={deleteDialogVisible}
+                    onDismiss={() => setDeleteDialogVisible(false)}
+                >
+                    <Dialog.Title>Delete Asset</Dialog.Title>
+                    <Dialog.Content>
+                        <Text>Are you sure you want to delete this asset? This action cannot be undone.</Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button onPress={() => setDeleteDialogVisible(false)}>Cancel</Button>
+                        <Button onPress={confirmDelete} textColor="#f44336">Delete</Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </View>
     );
 }
@@ -134,40 +311,60 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f5f5f5',
     },
-    searchBar: {
-        margin: 16,
-        elevation: 4,
+    header: {
+        backgroundColor: '#42b0f5',
     },
-    listContainer: {
+    searchContainer: {
         padding: 16,
+        backgroundColor: '#fff',
+        elevation: 2,
+    },
+    searchbar: {
+        elevation: 0,
+        backgroundColor: '#f5f5f5',
+    },
+    filterChips: {
+        marginTop: 12,
+        flexDirection: 'row',
+    },
+    chip: {
+        marginRight: 8,
+    },
+    list: {
+        padding: 16,
+        paddingBottom: 80,
     },
     card: {
-        marginBottom: 16,
-        elevation: 4,
+        marginBottom: 12,
+        elevation: 2,
+        borderRadius: 8,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 12,
     },
     cardTitleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     cardTitleText: {
-        marginLeft: 8,
+        marginLeft: 12,
+        flex: 1,
     },
     cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
     },
     cardSubtitle: {
         fontSize: 14,
         color: '#666',
+        marginTop: 2,
     },
     cardDetails: {
-        marginTop: 8,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -175,24 +372,32 @@ const styles = StyleSheet.create({
     detailItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 4,
     },
     detailText: {
         marginLeft: 8,
         color: '#666',
+        fontSize: 14,
+    },
+    badgeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     statusBadge: {
-        alignSelf: 'flex-start',
+        marginLeft: 8,
+    },
+    criticalityBadge: {
+        marginLeft: 8,
     },
     emptyState: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 32,
     },
     emptyTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '600',
+        color: '#333',
         marginTop: 16,
     },
     emptySubtitle: {
@@ -200,31 +405,16 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
         marginTop: 8,
+        marginBottom: 24,
     },
     addButton: {
-        backgroundColor: '#007bff',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-        marginTop: 24,
-    },
-    addButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
+        backgroundColor: '#42b0f5',
     },
     fab: {
         position: 'absolute',
         margin: 16,
         right: 0,
         bottom: 0,
-        backgroundColor: '#007bff',
-    },
-    cardActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    actionButton: {
-        margin: -8, // Reduce the default padding
+        backgroundColor: '#42b0f5',
     },
 });

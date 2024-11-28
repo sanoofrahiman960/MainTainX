@@ -5,8 +5,8 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import { useDispatch, useSelector } from 'react-redux';
-import { addWorkOrders } from '../../Redux/slices/workOrderSlice';
-import { selectVendor, unselectVendor, clearSelectedVendors } from '../../Redux/slices/vendorSlice';
+import { addWorkOrder } from '../../redux/slices/workOrderSlice';
+import { selectVendor, unselectVendor, clearSelectedVendors } from '../../redux/slices/vendorSlice';
 import {
     Provider as PaperProvider,
     Appbar,
@@ -207,7 +207,7 @@ export default function NewWorkOrder() {
             updatedAt: new Date().toISOString()
         };
 console.log("neww,",newWorkOrder);
-        //  dispatch(addWorkOrders(newWorkOrder));
+         dispatch(addWorkOrder(newWorkOrder));
         // Navigate to Tabs and then to WorkOrders screen
         navigation.navigate('Tabs', { screen: 'WorkOrders' });
     };

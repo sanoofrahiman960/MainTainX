@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Card,
@@ -15,13 +15,16 @@ import {
   TextInput,
   useTheme,
   IconButton,
+  Menu,
+  SegmentedButtons,
 } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { RootState } from '../../redux/store';
-import { updateWorkOrder } from '../../redux/actions/workorderActions';
-import { WorkOrder, Worker } from '../../redux/types/workorder';
+import { updateWorkOrder } from '../../redux/slices/workOrderSlice';
+import { WorkOrder } from '../../redux/types/workorder';
 import * as ImagePicker from 'react-native-image-picker';
 import DocumentPicker from 'react-native-document-picker';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const WorkOrderDetails = () => {
   const theme = useTheme();
@@ -30,12 +33,14 @@ const WorkOrderDetails = () => {
   const dispatch = useDispatch();
   const { workOrderId } = route.params;
 
+  // Updated selector to match our new store structure
   const workOrder = useSelector((state: RootState) =>
-    state.workOrders.workOrders.find((wo) => wo.id === workOrderId)
+    state.workOrder.workOrders.find((wo) => wo.id === workOrderId)
   );
 
   const [commentText, setCommentText] = useState('');
   const [showCommentDialog, setShowCommentDialog] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(workOrder?.status || 'Open');
 
   if (!workOrder) {
     return (
@@ -46,18 +51,58 @@ const WorkOrderDetails = () => {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Open':
-        return theme.colors.error;
-      case 'In Progress':
-        return theme.colors.primary;
-      case 'Completed':
-        return theme.colors.success;
-      case 'On Hold':
-        return theme.colors.warning;
+    switch (status.toLowerCase()) {
+      case 'open':
+        return theme.colors.primary; // Blue
+      case 'in progress':
+        return '#FFA000'; // Yellow/Orange
+      case 'on hold':
+        return theme.colors.error; // Red
+      case 'completed':
+        return '#4CAF50'; // Specific green color
       default:
         return theme.colors.disabled;
     }
+  };
+
+  const getPriorityText = (priorityIndex: number) => {
+    switch (priorityIndex) {
+      case 0:
+        return 'None';
+      case 1:
+        return 'Low';
+      case 2:
+        return 'Medium';
+      case 3:
+        return 'High';
+      default:
+        return 'None';
+    }
+  };
+
+  const getPriorityColor = (priorityIndex: number) => {
+    switch (priorityIndex) {
+      case 0:
+        return '#757575'; // Grey
+      case 1:
+        return '#42A5F5'; // Light Blue
+      case 2:
+        return '#FFA000'; // Orange
+      case 3:
+        return '#F44336'; // Red
+      default:
+        return '#757575';
+    }
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    setSelectedStatus(newStatus);
+    const updatedWorkOrder = {
+      ...workOrder,
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+    dispatch(updateWorkOrder(updatedWorkOrder));
   };
 
   const handleAddComment = () => {
@@ -70,7 +115,6 @@ const WorkOrderDetails = () => {
         id: '1', // Replace with actual logged-in worker ID
         name: 'John Doe', // Replace with actual logged-in worker name
         role: 'Technician',
-        email: 'john@example.com',
       },
       timestamp: new Date().toISOString(),
     };
@@ -78,11 +122,16 @@ const WorkOrderDetails = () => {
     const updatedWorkOrder = {
       ...workOrder,
       comments: [...(workOrder.comments || []), newComment],
+      updatedAt: new Date().toISOString(),
     };
 
     dispatch(updateWorkOrder(updatedWorkOrder));
     setCommentText('');
     setShowCommentDialog(false);
+  };
+
+  const handleEditPress = () => {
+    navigation.navigate('EditWorkOrder', { workOrderId: workOrder.id });
   };
 
   const handleAddAttachment = async () => {
@@ -101,31 +150,17 @@ const WorkOrderDetails = () => {
       const updatedWorkOrder = {
         ...workOrder,
         attachments: [...(workOrder.attachments || []), newAttachment],
+        updatedAt: new Date().toISOString(),
       };
 
       dispatch(updateWorkOrder(updatedWorkOrder));
     } catch (err) {
       if (!DocumentPicker.isCancel(err)) {
         console.error('Error picking document:', err);
+        Alert.alert('Error', 'Failed to add attachment');
       }
     }
   };
-
-  const renderWorkerAvatar = (worker: Worker) => (
-    <TouchableOpacity
-      key={worker.id}
-      style={styles.workerContainer}
-      onPress={() => {/* Navigate to worker profile */}}
-    >
-      <Avatar.Text
-        size={40}
-        label={worker.name.substring(0, 2).toUpperCase()}
-        style={styles.avatar}
-      />
-      <Paragraph style={styles.workerName}>{worker.name}</Paragraph>
-      <Paragraph style={styles.workerRole}>{worker.role}</Paragraph>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>
@@ -133,91 +168,167 @@ const WorkOrderDetails = () => {
         <Card style={styles.card}>
           <Card.Content>
             <View style={styles.header}>
-              <Title>{workOrder.title}</Title>
-              <Badge style={[styles.badge, { backgroundColor: getStatusColor(workOrder.status) }]}>
-                {workOrder.status}
-              </Badge>
+              <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
+              <View style={styles.headerActions}>
+                <IconButton icon="pencil" onPress={handleEditPress} />
+                <IconButton icon="delete" onPress={() => console.log('Delete button pressed')} />
+              </View>
+              <View style={styles.titleContainer}>
+                <Title>{workOrder.task}</Title>
+              </View>
             </View>
+            
+            <View style={styles.statusContainer}>
+              <Title style={styles.sectionTitle}>Status</Title>
+              <SegmentedButtons
+                value={selectedStatus}
+                onValueChange={handleStatusChange}
+                style={styles.segmentedButtons}
+                buttons={[
+                  {
+                    value: 'Open',
+                    label: 'Open',
+                    style: [
+                      styles.statusButton,
+                      selectedStatus === 'Open' && { backgroundColor: theme.colors.primary }
+                    ],
+                    labelStyle: [
+                      styles.statusLabel,
+                      selectedStatus === 'Open' && { color: 'white', fontWeight: 'bold' }
+                    ],
+                    showSelectedCheck: false
+                  },
+                  {
+                    value: 'In Progress',
+                    label: 'In Progress',
+                    style: [
+                      styles.statusButton,
+                      selectedStatus === 'In Progress' && { backgroundColor: '#FFA000' }
+                    ],
+                    labelStyle: [
+                      styles.statusLabel,
+                      selectedStatus === 'In Progress' && { color: 'white', fontWeight: 'bold' }
+                    ],
+                    showSelectedCheck: false
+                  },
+                  {
+                    value: 'On Hold',
+                    label: 'On Hold',
+                    style: [
+                      styles.statusButton,
+                      selectedStatus === 'On Hold' && { backgroundColor: theme.colors.error }
+                    ],
+                    labelStyle: [
+                      styles.statusLabel,
+                      selectedStatus === 'On Hold' && { color: 'white', fontWeight: 'bold' }
+                    ],
+                    showSelectedCheck: false
+                  },
+                  {
+                    value: 'Completed',
+                    label: 'Completed',
+                    style: [
+                      styles.statusButton,
+                      selectedStatus === 'Completed' && { backgroundColor: '#4CAF50' }
+                    ],
+                    labelStyle: [
+                      styles.statusLabel,
+                      selectedStatus === 'Completed' && { color: 'white', fontWeight: 'bold' }
+                    ],
+                    showSelectedCheck: false
+                  }
+                ]}
+              />
+            </View>
+            
             <Paragraph style={styles.description}>{workOrder.description}</Paragraph>
 
-            <Title style={styles.sectionTitle}>Assigned Workers</Title>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.workersContainer}>
-                {workOrder.assignedWorkers.map(renderWorkerAvatar)}
+            <List.Section>
+              <List.Item
+                title="Priority"
+                right={() => (
+                  <Badge 
+                    style={[
+                      styles.priorityBadge, 
+                      { backgroundColor: getPriorityColor(workOrder.priorityIndex) }
+                    ]}
+                  >
+                    {getPriorityText(workOrder.priorityIndex)}
+                  </Badge>
+                )}
+              />
+              <List.Item
+                title="Due Date"
+                right={() => <Paragraph>{new Date(workOrder.dueDate).toLocaleDateString()}</Paragraph>}
+              />
+              <List.Item
+                title="Estimated Time"
+                right={() => <Paragraph>{workOrder.estimatedTime}</Paragraph>}
+              />
+              {workOrder.location && (
+                <List.Item
+                  title="Location"
+                  right={() => <Paragraph>{workOrder.location}</Paragraph>}
+                />
+              )}
+              {workOrder.asset && (
+                <List.Item
+                  title="Asset"
+                  right={() => <Paragraph>{workOrder.asset}</Paragraph>}
+                />
+              )}
+            </List.Section>
+
+            {workOrder.categories && workOrder.categories.length > 0 && (
+              <View style={styles.categoriesContainer}>
+                <Title style={styles.sectionTitle}>Categories</Title>
+                <View style={styles.categoryTags}>
+                  {workOrder.categories.map((category, index) => (
+                    <Badge key={index} style={styles.categoryBadge}>
+                      {category}
+                    </Badge>
+                  ))}
+                </View>
               </View>
-            </ScrollView>
-
-            <Title style={styles.sectionTitle}>Details</Title>
-            <List.Item
-              title="Priority"
-              right={() => <Badge style={styles.priorityBadge}>{workOrder.priority}</Badge>}
-            />
-            <List.Item
-              title="Due Date"
-              right={() => <Paragraph>{new Date(workOrder.dueDate).toLocaleDateString()}</Paragraph>}
-            />
-            {workOrder.estimatedHours && (
-              <List.Item
-                title="Estimated Hours"
-                right={() => <Paragraph>{workOrder.estimatedHours} hours</Paragraph>}
-              />
-            )}
-            {workOrder.actualHours && (
-              <List.Item
-                title="Actual Hours"
-                right={() => <Paragraph>{workOrder.actualHours} hours</Paragraph>}
-              />
-            )}
-
-            {workOrder.materials && workOrder.materials.length > 0 && (
-              <>
-                <Title style={styles.sectionTitle}>Materials</Title>
-                {workOrder.materials.map((material) => (
-                  <List.Item
-                    key={material.id}
-                    title={material.name}
-                    description={`${material.quantity} ${material.unit}`}
-                    right={() => material.cost && <Paragraph>${material.cost}</Paragraph>}
-                  />
-                ))}
-              </>
             )}
 
             {workOrder.attachments && workOrder.attachments.length > 0 && (
-              <>
+              <List.Section>
                 <Title style={styles.sectionTitle}>Attachments</Title>
                 {workOrder.attachments.map((attachment, index) => (
                   <List.Item
                     key={index}
-                    title={attachment.name}
-                    description={`${(attachment.size / 1024 / 1024).toFixed(2)} MB`}
-                    left={(props) => <List.Icon {...props} icon="file" />}
-                    onPress={() => {/* Open attachment */}}
+                    title={attachment}
+                    left={props => <List.Icon {...props} icon="file" />}
                   />
                 ))}
-              </>
+              </List.Section>
             )}
 
-            <Title style={styles.sectionTitle}>Comments</Title>
-            {workOrder.comments && workOrder.comments.map((comment) => (
-              <Card key={comment.id} style={styles.commentCard}>
-                <Card.Content>
-                  <View style={styles.commentHeader}>
-                    <Avatar.Text
-                      size={24}
-                      label={comment.worker.name.substring(0, 2).toUpperCase()}
-                    />
-                    <View style={styles.commentInfo}>
-                      <Paragraph style={styles.commentUser}>{comment.worker.name}</Paragraph>
-                      <Paragraph style={styles.commentTime}>
-                        {new Date(comment.timestamp).toLocaleString()}
-                      </Paragraph>
-                    </View>
-                  </View>
-                  <Paragraph style={styles.commentText}>{comment.text}</Paragraph>
-                </Card.Content>
-              </Card>
-            ))}
+            {workOrder.comments && (
+              <List.Section>
+                <Title style={styles.sectionTitle}>Comments</Title>
+                {workOrder.comments.map((comment) => (
+                  <Card key={comment.id} style={styles.commentCard}>
+                    <Card.Content>
+                      <View style={styles.commentHeader}>
+                        <Avatar.Text
+                          size={24}
+                          label={comment.worker.name.substring(0, 2).toUpperCase()}
+                        />
+                        <View style={styles.commentInfo}>
+                          <Paragraph style={styles.commentUser}>{comment.worker.name}</Paragraph>
+                          <Paragraph style={styles.commentTime}>
+                            {new Date(comment.timestamp).toLocaleString()}
+                          </Paragraph>
+                        </View>
+                      </View>
+                      <Paragraph style={styles.commentText}>{comment.text}</Paragraph>
+                    </Card.Content>
+                  </Card>
+                ))}
+              </List.Section>
+            )}
           </Card.Content>
         </Card>
       </ScrollView>
@@ -227,6 +338,7 @@ const WorkOrderDetails = () => {
           mode="contained"
           onPress={() => setShowCommentDialog(true)}
           style={styles.actionButton}
+          icon="comment"
         >
           Add Comment
         </Button>
@@ -234,6 +346,7 @@ const WorkOrderDetails = () => {
           mode="contained"
           onPress={handleAddAttachment}
           style={styles.actionButton}
+          icon="paperclip"
         >
           Add Attachment
         </Button>
@@ -249,11 +362,12 @@ const WorkOrderDetails = () => {
               multiline
               numberOfLines={4}
               mode="outlined"
+              placeholder="Type your comment here..."
             />
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setShowCommentDialog(false)}>Cancel</Button>
-            <Button onPress={handleAddComment}>Add</Button>
+            <Button onPress={handleAddComment} mode="contained">Add</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -276,42 +390,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  badge: {
-    alignSelf: 'center',
+  headerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    flex: 1,
+  },
+  titleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusContainer: {
+    marginVertical: 16,
+  },
+  segmentedButtons: {
+    marginTop: 8,
+  },
+  statusButton: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    minWidth: 80,
+    paddingVertical: 8,
+  },
+  statusLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
   description: {
     marginBottom: 16,
+    color: '#666',
   },
   sectionTitle: {
     fontSize: 18,
     marginTop: 16,
     marginBottom: 8,
   },
-  workersContainer: {
+  categoriesContainer: {
+    marginVertical: 16,
+  },
+  categoryTags: {
     flexDirection: 'row',
-    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  workerContainer: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  avatar: {
-    marginBottom: 4,
-  },
-  workerName: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  workerRole: {
-    fontSize: 10,
-    color: '#666',
-    textAlign: 'center',
+  categoryBadge: {
+    backgroundColor: '#e0e0e0',
   },
   priorityBadge: {
     alignSelf: 'center',
+    paddingHorizontal: 12,
+    // paddingVertical: 4,
   },
   commentCard: {
     marginVertical: 8,
+    backgroundColor: '#f9f9f9',
   },
   commentHeader: {
     flexDirection: 'row',
@@ -320,6 +454,7 @@ const styles = StyleSheet.create({
   },
   commentInfo: {
     marginLeft: 8,
+    flex: 1,
   },
   commentUser: {
     fontWeight: 'bold',
