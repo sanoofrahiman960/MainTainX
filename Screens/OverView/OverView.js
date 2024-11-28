@@ -26,6 +26,7 @@ export default function LandingScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
+  const workOrders = useSelector(state => state.workOrder?.workOrders || []);
 
   useEffect(() => {
     Animated.timing(scaleAnim, {
@@ -41,6 +42,22 @@ export default function LandingScreen() {
 
     return () => clearTimeout(timer);
   }, [navigation, scaleAnim]);
+
+  const getWorkOrderCounts = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const counts = {
+      highPriority: workOrders.filter(wo => wo.priorityIndex === 2).length,
+      overdue: workOrders.filter(wo => new Date(wo.dueDate) < today).length,
+      pendingApproval: workOrders.filter(wo => wo.status === 'Pending Approval').length,
+      completed: workOrders.filter(wo => wo.status === 'Completed').length
+    };
+
+    return counts;
+  };
+
+  const workOrderCounts = getWorkOrderCounts();
 
   const handleAccount = () => {
     dispatch(signOut())
@@ -72,10 +89,10 @@ export default function LandingScreen() {
   ];
 
   const statusCards = [
-    { id: 1, title: 'High Priority', icon: 'alert-circle-outline', count: 3, color: '#F44336' },
-    { id: 2, title: 'Overdue', icon: 'clock-outline', count: 0, color: '#FF9800' },
-    { id: 3, title: 'Pending Approval', icon: 'alert-circle-outline', count: 5, color: '#4CAF50' },
-    { id: 4, title: 'Completed', icon: 'check-circle-outline', count: 12, color: '#2196F3' },
+    { id: 1, title: 'High Priority', icon: 'alert-circle-outline', count: workOrderCounts.highPriority, color: '#F44336' },
+    { id: 2, title: 'Overdue', icon: 'clock-outline', count: workOrderCounts.overdue, color: '#FF9800' },
+    { id: 3, title: 'Pending Approval', icon: 'alert-circle-outline', count: workOrderCounts.pendingApproval, color: '#4CAF50' },
+    { id: 4, title: 'Completed', icon: 'check-circle-outline', count: workOrderCounts.completed, color: '#2196F3' },
   ];
 
   const renderActionButton = ({ title, icon, color }) => (
@@ -106,7 +123,7 @@ export default function LandingScreen() {
       style={[styles.statusCard, { width: cardWidth }]}
       key={title}
       onPress={() => {
-        console.log(`${title} card pressed`);
+        navigation.navigate('WorkOrder', { filterType: title });
       }}
     >
       <View style={[styles.statusCardIcon, { backgroundColor: color }]}>
@@ -459,4 +476,3 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
 });
-

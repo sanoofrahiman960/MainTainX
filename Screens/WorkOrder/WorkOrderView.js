@@ -23,10 +23,13 @@ export default function WorkOrderView() {
         location: null,
         priority: null,
         category: null,
+        status: null,
         workType: null,
         asset: null,
         assetType: null,
-        vendor: null
+        vendor: null,
+        part: null,
+        procedure: null
     });
 
     const handleDateChange = (event, date) => {
@@ -73,6 +76,38 @@ export default function WorkOrderView() {
         }
     };
 
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'open':
+                return '#2196F3'; // Blue
+            case 'in progress':
+                return '#FFA000'; // Yellow/Orange
+            case 'on hold':
+                return '#F44336'; // Red
+            case 'completed':
+                return '#4CAF50'; // Green
+            default:
+                return '#757575'; // Grey
+        }
+    };
+
+    const clearFilters = () => {
+        setFilters({
+            dueDate: null,
+            location: null,
+            priority: null,
+            category: null,
+            status: null,
+            workType: null,
+            asset: null,
+            assetType: null,
+            vendor: null,
+            part: null,
+            procedure: null
+        });
+        setSelectedDate(new Date());
+    };
+
     const filteredWorkOrders = workOrders.filter(wo => {
         let matches = true;
         const searchLower = searchQuery.toLowerCase();
@@ -94,8 +129,14 @@ export default function WorkOrderView() {
         // Other filters
         if (matches && filters.location) matches = wo.location === filters.location;
         if (matches && filters.priority !== null) matches = wo.priorityIndex === filters.priority;
+        if (matches && filters.category) matches = wo.categories?.includes(filters.category);
+        if (matches && filters.status) matches = wo.status === filters.status;
         if (matches && filters.workType) matches = wo.workType === filters.workType;
         if (matches && filters.asset) matches = wo.asset === filters.asset;
+        if (matches && filters.assetType) matches = wo.assetType === filters.assetType;
+        if (matches && filters.vendor) matches = wo.vendor === filters.vendor;
+        if (matches && filters.part) matches = wo.parts?.includes(filters.part);
+        if (matches && filters.procedure) matches = wo.procedure === filters.procedure;
 
         return matches;
     });
@@ -107,11 +148,18 @@ export default function WorkOrderView() {
                     <View style={styles.cardHeader}>
                         <View style={styles.titleContainer}>
                             <Text style={styles.title}>{item.task || 'Untitled Task'}</Text>
-                            <Badge 
-                                style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priorityIndex) }]}
-                            >
-                                {getPriorityText(item.priorityIndex)}
-                            </Badge>
+                            <View style={styles.badgeContainer}>
+                                <Badge 
+                                    style={[styles.badge, { backgroundColor: getPriorityColor(item.priorityIndex) }]}
+                                >
+                                    {getPriorityText(item.priorityIndex)}
+                                </Badge>
+                                <Badge 
+                                    style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}
+                                >
+                                    {item.status || 'Open'}
+                                </Badge>
+                            </View>
                         </View>
                         {item.dueDate && (
                             <Text style={styles.dueDate}>
@@ -187,42 +235,166 @@ export default function WorkOrderView() {
                     }
                 >
                     <Menu.Item 
+                        title="Due Date"
+                        onPress={() => setShowDatePicker(true)}
+                        leadingIcon="calendar"
+                    />
+                    <Divider />
+                    
+                    <Menu.Item 
+                        title="Status"
+                        leadingIcon="flag"
+                    />
+                    <Menu.Item 
+                        onPress={() => {
+                            setFilters(prev => ({ ...prev, status: 'Open' }));
+                            setShowFilterMenu(false);
+                        }} 
+                        title="Open"
+                        style={{ paddingLeft: 30 }}
+                    />
+                    <Menu.Item 
+                        onPress={() => {
+                            setFilters(prev => ({ ...prev, status: 'In Progress' }));
+                            setShowFilterMenu(false);
+                        }} 
+                        title="In Progress"
+                        style={{ paddingLeft: 30 }}
+                    />
+                    <Menu.Item 
+                        onPress={() => {
+                            setFilters(prev => ({ ...prev, status: 'On Hold' }));
+                            setShowFilterMenu(false);
+                        }} 
+                        title="On Hold"
+                        style={{ paddingLeft: 30 }}
+                    />
+                    <Menu.Item 
+                        onPress={() => {
+                            setFilters(prev => ({ ...prev, status: 'Completed' }));
+                            setShowFilterMenu(false);
+                        }} 
+                        title="Completed"
+                        style={{ paddingLeft: 30 }}
+                    />
+                    <Divider />
+
+                    <Menu.Item 
+                        title="Priority"
+                        leadingIcon="alert-circle"
+                    />
+                    <Menu.Item 
                         onPress={() => {
                             setFilters(prev => ({ ...prev, priority: 2 }));
                             setShowFilterMenu(false);
                         }} 
-                        title="High Priority" 
+                        title="High Priority"
+                        style={{ paddingLeft: 30 }}
                     />
                     <Menu.Item 
                         onPress={() => {
                             setFilters(prev => ({ ...prev, priority: 1 }));
                             setShowFilterMenu(false);
                         }} 
-                        title="Medium Priority" 
+                        title="Medium Priority"
+                        style={{ paddingLeft: 30 }}
                     />
                     <Menu.Item 
                         onPress={() => {
                             setFilters(prev => ({ ...prev, priority: 0 }));
                             setShowFilterMenu(false);
                         }} 
-                        title="Low Priority" 
+                        title="Low Priority"
+                        style={{ paddingLeft: 30 }}
                     />
                     <Divider />
+
+                    <Menu.Item 
+                        title="Location"
+                        onPress={() => {
+                            // TODO: Show location picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="map-marker"
+                    />
+                    <Divider />
+
+                    <Menu.Item 
+                        title="Asset"
+                        onPress={() => {
+                            // TODO: Show asset picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="cube-outline"
+                    />
+                    <Menu.Item 
+                        title="Asset Type"
+                        onPress={() => {
+                            // TODO: Show asset type picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="cube-scan"
+                        style={{ paddingLeft: 30 }}
+                    />
+                    <Divider />
+
+                    <Menu.Item 
+                        title="Work Type"
+                        onPress={() => {
+                            // TODO: Show work type picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="wrench"
+                    />
+                    <Divider />
+
+                    <Menu.Item 
+                        title="Category"
+                        onPress={() => {
+                            // TODO: Show category picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="tag"
+                    />
+                    <Divider />
+
+                    <Menu.Item 
+                        title="Vendor"
+                        onPress={() => {
+                            // TODO: Show vendor picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="store"
+                    />
+                    <Divider />
+
+                    <Menu.Item 
+                        title="Part"
+                        onPress={() => {
+                            // TODO: Show part picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="cog"
+                    />
+                    <Divider />
+
+                    <Menu.Item 
+                        title="Procedure"
+                        onPress={() => {
+                            // TODO: Show procedure picker
+                            setShowFilterMenu(false);
+                        }}
+                        leadingIcon="file-document"
+                    />
+                    <Divider />
+
                     <Menu.Item 
                         onPress={() => {
-                            setFilters({
-                                dueDate: null,
-                                location: null,
-                                priority: null,
-                                category: null,
-                                workType: null,
-                                asset: null,
-                                assetType: null,
-                                vendor: null
-                            });
+                            clearFilters();
                             setShowFilterMenu(false);
                         }} 
-                        title="Clear Filters" 
+                        title="Clear All Filters"
+                        leadingIcon="filter-remove"
                     />
                 </Menu>
             </View>
@@ -302,8 +474,13 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginRight: 8,
     },
-    priorityBadge: {
-        borderRadius: 4,
+    badgeContainer: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    badge: {
+        alignSelf: 'center',
+        paddingHorizontal: 12,
     },
     dueDate: {
         fontSize: 12,
