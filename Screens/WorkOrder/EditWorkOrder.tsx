@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, Image, TouchableOpacity, Text } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   TextInput,
@@ -11,12 +11,14 @@ import {
   Portal,
   Dialog,
   Divider,
+  IconButton,
 } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { RootState } from '../../redux/store';
 import { updateWorkOrder } from '../../redux/slices/workOrderSlice';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
+import * as ImagePicker from 'react-native-image-picker';
 
 const EditWorkOrder = () => {
   const theme = useTheme();
@@ -38,11 +40,8 @@ const EditWorkOrder = () => {
     asset: '',
     categories: [] as string[],
     dueDate: new Date(),
+    attachments: [] as any[],
   });
-
-  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
-  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
-  const [newCategory, setNewCategory] = useState('');
 
   useEffect(() => {
     if (workOrder) {
@@ -55,6 +54,7 @@ const EditWorkOrder = () => {
         asset: workOrder.asset || '',
         categories: workOrder.categories || [],
         dueDate: new Date(workOrder.dueDate),
+        attachments: workOrder.attachments || [],
       });
     }
   }, [workOrder]);
@@ -108,6 +108,96 @@ const EditWorkOrder = () => {
         return 'None';
     }
   };
+
+  const handleAddImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibrary({
+        mediaType: 'photo',
+        quality: 1,
+        selectionLimit: 1,
+      });
+
+      if (result.didCancel) return;
+
+      if (result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const newAttachment = {
+          name: asset.fileName || 'image.jpg',
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          size: asset.fileSize || 0,
+          width: asset.width,
+          height: asset.height,
+        };
+
+        setFormData(prev => ({
+          ...prev,
+          attachments: [...prev.attachments, newAttachment],
+        }));
+      }
+    } catch (err) {
+      console.error('Error picking image:', err);
+      Alert.alert('Error', 'Failed to add image');
+    }
+  };
+
+  const handleEditImage = async (index: number) => {
+    try {
+      const result = await ImagePicker.launchImageLibrary({
+        mediaType: 'photo',
+        quality: 1,
+        selectionLimit: 1,
+      });
+
+      if (result.didCancel) return;
+
+      if (result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const updatedAttachment = {
+          name: asset.fileName || 'image.jpg',
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          size: asset.fileSize || 0,
+          width: asset.width,
+          height: asset.height,
+        };
+
+        setFormData(prev => ({
+          ...prev,
+          attachments: prev.attachments.map((att, i) => 
+            i === index ? updatedAttachment : att
+          ),
+        }));
+      }
+    } catch (err) {
+      console.error('Error editing image:', err);
+      Alert.alert('Error', 'Failed to edit image');
+    }
+  };
+
+  const handleDeleteImage = (index: number) => {
+    Alert.alert(
+      'Delete Image',
+      'Are you sure you want to delete this image?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setFormData(prev => ({
+              ...prev,
+              attachments: prev.attachments.filter((_, i) => i !== index),
+            }));
+          },
+        },
+      ]
+    );
+  };
+
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
 
   return (
     <View style={styles.container}>
@@ -203,6 +293,61 @@ const EditWorkOrder = () => {
               Add Category
             </Button>
           </View>
+
+          <Title style={styles.sectionTitle}>Attachments</Title>
+          <Button
+            mode="outlined"
+            onPress={handleAddImage}
+            icon="camera"
+            style={styles.addButton}
+          >
+            Add Image
+          </Button>
+
+          {formData.attachments.map((attachment, index) => (
+            <View key={index} style={styles.attachmentContainer}>
+              {attachment.type?.startsWith('image/') ? (
+                <View style={styles.imageContainer}>
+                  <Image
+                    source={{ uri: attachment.uri }}
+                    style={styles.attachmentImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.imageOverlay}>
+                    <Text style={styles.imageName}>{attachment.name}</Text>
+                    <Text style={styles.imageSize}>
+                      {`${(attachment.size / 1024).toFixed(1)} KB`}
+                    </Text>
+                  </View>
+                  <View style={styles.imageActions}>
+                    <IconButton
+                      icon="pencil"
+                      size={20}
+                      onPress={() => handleEditImage(index)}
+                    />
+                    <IconButton
+                      icon="delete"
+                      size={20}
+                      onPress={() => handleDeleteImage(index)}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <List.Item
+                  title={attachment.name}
+                  description={`${(attachment.size / 1024).toFixed(1)} KB`}
+                  left={props => <List.Icon {...props} icon="file" />}
+                  right={props => (
+                    <IconButton
+                      {...props}
+                      icon="delete"
+                      onPress={() => handleDeleteImage(index)}
+                    />
+                  )}
+                />
+              )}
+            </View>
+          ))}
         </View>
       </ScrollView>
 
@@ -289,6 +434,45 @@ const styles = StyleSheet.create({
   footerButton: {
     flex: 1,
     marginHorizontal: 8,
+  },
+  attachmentContainer: {
+    marginVertical: 8,
+  },
+  imageContainer: {
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginHorizontal: 16,
+  },
+  attachmentImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#f0f0f0',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 8,
+  },
+  imageActions: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderBottomLeftRadius: 8,
+  },
+  imageName: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  imageSize: {
+    color: 'white',
+    fontSize: 12,
   },
 });
 

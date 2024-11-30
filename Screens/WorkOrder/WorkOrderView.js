@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, Text } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { StyleSheet, View, FlatList, TouchableOpacity, Text, ScrollView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card, Searchbar, IconButton, Menu, Divider, Badge, FAB } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSelector } from 'react-redux';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, isSameDay, isWithinInterval } from 'date-fns';
 
 export default function WorkOrderView() {
     const navigation = useNavigation();
@@ -19,7 +19,9 @@ export default function WorkOrderView() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [showFilterMenu, setShowFilterMenu] = useState(false);
     const [filters, setFilters] = useState({
-        dueDate: null,
+        dueDate: new Date(),
+        weekStart: null,
+        weekEnd: null,
         location: null,
         priority: null,
         category: null,
@@ -31,13 +33,88 @@ export default function WorkOrderView() {
         part: null,
         procedure: null
     });
+    const [viewMode, setViewMode] = useState('month'); // 'month' or 'week'
+    const [showCustomWeekPicker, setShowCustomWeekPicker] = useState(false);
+    const [showCustomMonthPicker, setShowCustomMonthPicker] = useState(false);
 
     const handleDateChange = (event, date) => {
         setShowDatePicker(false);
         if (date) {
-            setSelectedDate(date);
-            setFilters(prev => ({ ...prev, dueDate: date }));
+            if (viewMode === 'week') {
+                // If in week view, set to start of the week
+                const weekStart = startOfWeek(date);
+                setSelectedDate(weekStart);
+                setFilters(prev => ({ ...prev, dueDate: weekStart }));
+            } else {
+                setSelectedDate(date);
+                setFilters(prev => ({ ...prev, dueDate: date }));
+            }
         }
+    };
+
+    const handleDatePress = () => {
+        if (viewMode === 'week') {
+            setShowCustomWeekPicker(true);
+        } else {
+            setShowCustomMonthPicker(true);
+        }
+    };
+
+    const handleWeekDateSelect = (date) => {
+        setShowCustomWeekPicker(false);
+        const weekStart = startOfWeek(date);
+        const weekEnd = endOfWeek(date);
+        
+        setSelectedDate(date);
+        setFilters(prev => ({
+            ...prev,
+            dueDate: null,
+            weekStart: weekStart,
+            weekEnd: weekEnd
+        }));
+    };
+
+    const handleMonthDateSelect = (date) => {
+        setShowCustomMonthPicker(false);
+        setSelectedDate(date);
+        setFilters(prev => ({
+            ...prev,
+            weekStart: null,
+            weekEnd: null,
+            dueDate: date
+        }));
+    };
+
+    const handleViewModeChange = (mode) => {
+        const today = new Date();
+        if (mode === 'week') {
+            const weekStart = startOfWeek(today);
+            setSelectedDate(weekStart);
+            setFilters(prev => ({
+                ...prev,
+                dueDate: null,
+                weekStart: weekStart,
+                weekEnd: endOfWeek(today)
+            }));
+        } else {
+            setSelectedDate(today);
+            setFilters(prev => ({
+                ...prev,
+                weekStart: null,
+                weekEnd: null,
+                dueDate: today
+            }));
+        }
+        setViewMode(mode);
+    };
+
+    const getDateRangeText = () => {
+        if (viewMode === 'week') {
+            const weekStart = startOfWeek(selectedDate);
+            const weekEnd = endOfWeek(selectedDate);
+            return `${format(weekStart, 'MMM dd')} - ${format(weekEnd, 'MMM dd, yyyy')}`;
+        }
+        return format(selectedDate, 'MMM dd, yyyy');
     };
 
     const getLocationName = (locationId) => {
@@ -93,7 +170,9 @@ export default function WorkOrderView() {
 
     const clearFilters = () => {
         setFilters({
-            dueDate: null,
+            dueDate: new Date(),
+            weekStart: null,
+            weekEnd: null,
             location: null,
             priority: null,
             category: null,
@@ -108,38 +187,57 @@ export default function WorkOrderView() {
         setSelectedDate(new Date());
     };
 
-    const filteredWorkOrders = workOrders.filter(wo => {
-        let matches = true;
-        const searchLower = searchQuery.toLowerCase();
+    const filteredWorkOrders = useMemo(() => {
+        return workOrders.filter(order => {
+            // Ensure we have a valid date to compare
+            if (!order.dueDate) return false;
+            
+            // Convert order due date to Date object for comparison
+            const orderDueDate = new Date(order.dueDate);
+            
+            // Check date filter based on view mode
+            let dateMatches = true;
+            
+            if (viewMode === 'month' && filters.dueDate) {
+                // For month view, compare the day, month, and year
+                dateMatches = (
+                    orderDueDate.getDate() === filters.dueDate.getDate() &&
+                    orderDueDate.getMonth() === filters.dueDate.getMonth() &&
+                    orderDueDate.getFullYear() === filters.dueDate.getFullYear()
+                );
+            } else if (viewMode === 'week' && filters.weekStart && filters.weekEnd) {
+                // For week view, check if the date falls within the week range
+                const orderTime = orderDueDate.getTime();
+                const startTime = filters.weekStart.getTime();
+                const endTime = filters.weekEnd.getTime();
+                dateMatches = orderTime >= startTime && orderTime <= endTime;
+            }
 
-        // Search filter
-        if (searchQuery) {
-            matches = wo.task?.toLowerCase().includes(searchLower) ||
-                     wo.description?.toLowerCase().includes(searchLower) ||
-                     wo.location?.toLowerCase().includes(searchLower) ||
-                     wo.asset?.toLowerCase().includes(searchLower);
-        }
+            // Check search query
+            const searchMatches = !searchQuery || 
+                (order.title && order.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (order.description && order.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (order.location && order.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (order.asset && order.asset.toLowerCase().includes(searchQuery.toLowerCase()));
 
-        // Date filter
-        if (matches && filters.dueDate) {
-            const woDate = new Date(wo.dueDate);
-            matches = woDate.toDateString() === filters.dueDate.toDateString();
-        }
+            // Check other filters
+            const statusMatches = !filters.status || order.status === filters.status;
+            const priorityMatches = !filters.priority || order.priority === filters.priority;
+            const locationMatches = !filters.location || order.location === filters.location;
+            const categoryMatches = !filters.category || (order.categories && order.categories.includes(filters.category));
+            const workTypeMatches = !filters.workType || order.workType === filters.workType;
+            const assetMatches = !filters.asset || order.asset === filters.asset;
+            const assetTypeMatches = !filters.assetType || order.assetType === filters.assetType;
+            const vendorMatches = !filters.vendor || order.vendor === filters.vendor;
+            const partMatches = !filters.part || (order.parts && order.parts.includes(filters.part));
+            const procedureMatches = !filters.procedure || order.procedure === filters.procedure;
 
-        // Other filters
-        if (matches && filters.location) matches = wo.location === filters.location;
-        if (matches && filters.priority !== null) matches = wo.priorityIndex === filters.priority;
-        if (matches && filters.category) matches = wo.categories?.includes(filters.category);
-        if (matches && filters.status) matches = wo.status === filters.status;
-        if (matches && filters.workType) matches = wo.workType === filters.workType;
-        if (matches && filters.asset) matches = wo.asset === filters.asset;
-        if (matches && filters.assetType) matches = wo.assetType === filters.assetType;
-        if (matches && filters.vendor) matches = wo.vendor === filters.vendor;
-        if (matches && filters.part) matches = wo.parts?.includes(filters.part);
-        if (matches && filters.procedure) matches = wo.procedure === filters.procedure;
-
-        return matches;
-    });
+            // Return true only if all conditions match
+            return dateMatches && searchMatches && statusMatches && priorityMatches &&
+                   locationMatches && categoryMatches && workTypeMatches && assetMatches &&
+                   assetTypeMatches && vendorMatches && partMatches && procedureMatches;
+        });
+    }, [workOrders, filters, searchQuery, viewMode]);
 
     const renderWorkOrder = ({ item }) => (
         <TouchableOpacity onPress={() => navigation.navigate('WorkOrderDetails', { workOrderId: item.id })}>
@@ -203,32 +301,253 @@ export default function WorkOrderView() {
         </TouchableOpacity>
     );
 
+    const WeekPicker = () => {
+        if (!showCustomWeekPicker) return null;
+
+        const start = startOfWeek(selectedDate);
+        const dates = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date(start);
+            date.setDate(start.getDate() + i);
+            return date;
+        });
+
+        // Add week navigation
+        const goToPreviousWeek = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() - 7);
+            handleWeekDateSelect(newDate);
+        };
+
+        const goToNextWeek = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() + 7);
+            handleWeekDateSelect(newDate);
+        };
+
+        const today = new Date();
+
+        return (
+            <View style={styles.weekPickerContainer}>
+                <View style={styles.monthHeader}>
+                    <TouchableOpacity onPress={goToPreviousWeek} style={styles.monthNavButton}>
+                        <Icon name="chevron-left" size={24} color="#666" />
+                    </TouchableOpacity>
+                    <Text style={styles.monthYearText}>
+                        {format(start, 'MMMM d')} - {format(dates[6], 'MMMM d, yyyy')}
+                    </Text>
+                    <TouchableOpacity onPress={goToNextWeek} style={styles.monthNavButton}>
+                        <Icon name="chevron-right" size={24} color="#666" />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.weekDayHeader}>
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <Text key={index} style={styles.weekDayText}>{day}</Text>
+                    ))}
+                </View>
+
+                <View style={styles.weekRow}>
+                    {dates.map((date, index) => {
+                        const isSelected = format(date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
+                        const isToday = format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+
+                        return (
+                            <TouchableOpacity
+                                key={index}
+                                style={[
+                                    styles.weekDateCell,
+                                    isSelected && styles.selectedDate,
+                                    isToday && styles.todayDate
+                                ]}
+                                onPress={() => handleWeekDateSelect(date)}
+                            >
+                                <Text style={[
+                                    styles.weekDateNumber,
+                                    isSelected && styles.selectedDateText,
+                                    isToday && styles.todayDateText
+                                ]}>
+                                    {format(date, 'd')}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+
+                <TouchableOpacity 
+                    style={styles.closeButton}
+                    onPress={() => setShowCustomWeekPicker(false)}
+                >
+                    <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
+
+    const MonthPicker = () => {
+        if (!showCustomMonthPicker) return null;
+
+        const today = new Date();
+        const currentMonth = selectedDate.getMonth();
+        const currentYear = selectedDate.getFullYear();
+        
+        // Get the first day of the month
+        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+        const startingDayOfWeek = firstDayOfMonth.getDay();
+        
+        // Get the last day of the month
+        const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        
+        // Calculate previous month's days that need to be shown
+        const previousMonth = new Date(currentYear, currentMonth - 1);
+        const previousMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
+        
+        const weeks = [];
+        let days = [];
+        let day = 1;
+        let previousMonthDay = previousMonthLastDay - startingDayOfWeek + 1;
+        
+        // Add previous month's days
+        for (let i = 0; i < startingDayOfWeek; i++) {
+            days.push({
+                date: new Date(currentYear, currentMonth - 1, previousMonthDay),
+                dayOfMonth: previousMonthDay,
+                isCurrentMonth: false
+            });
+            previousMonthDay++;
+        }
+        
+        // Add current month's days
+        while (day <= lastDayOfMonth) {
+            days.push({
+                date: new Date(currentYear, currentMonth, day),
+                dayOfMonth: day,
+                isCurrentMonth: true
+            });
+            
+            if (days.length === 7) {
+                weeks.push([...days]);
+                days = [];
+            }
+            day++;
+        }
+        
+        // Add next month's days
+        let nextMonthDay = 1;
+        while (days.length < 7) {
+            days.push({
+                date: new Date(currentYear, currentMonth + 1, nextMonthDay),
+                dayOfMonth: nextMonthDay,
+                isCurrentMonth: false
+            });
+            nextMonthDay++;
+        }
+        if (days.length > 0) {
+            weeks.push(days);
+        }
+
+        // Add month navigation
+        const goToPreviousMonth = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setMonth(newDate.getMonth() - 1);
+            handleMonthDateSelect(newDate);
+        };
+
+        const goToNextMonth = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setMonth(newDate.getMonth() + 1);
+            handleMonthDateSelect(newDate);
+
+        };
+
+        return (
+            <View style={styles.monthPickerContainer}>
+                <View style={styles.monthHeader}>
+                    <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthNavButton}>
+                        <Icon name="chevron-left" size={24} color="#666" />
+                    </TouchableOpacity>
+                    <Text style={styles.monthYearText}>
+                        {format(selectedDate, 'MMMM yyyy')}
+                    </Text>
+                    <TouchableOpacity onPress={goToNextMonth} style={styles.monthNavButton}>
+                        <Icon name="chevron-right" size={24} color="#666" />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.weekDayHeader}>
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <Text key={index} style={styles.weekDayText}>{day}</Text>
+                    ))}
+                </View>
+
+                {weeks.map((week, weekIndex) => (
+                    <View key={weekIndex} style={styles.weekRow}>
+                        {week.map((dayInfo, dayIndex) => {
+                            const isSelected = format(dayInfo.date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
+                            const isToday = format(dayInfo.date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+
+                            return (
+                                <TouchableOpacity
+                                    key={dayIndex}
+                                    style={[
+                                        styles.monthDate,
+                                        !dayInfo.isCurrentMonth && styles.differentMonth,
+                                        isSelected && styles.selectedDate,
+                                        isToday && styles.todayDate
+                                    ]}
+                                    onPress={() => handleMonthDateSelect(dayInfo.date)}
+                                >
+                                    <Text style={[
+                                        styles.monthDateText,
+                                        !dayInfo.isCurrentMonth && styles.differentMonthText,
+                                        isSelected && styles.selectedDateText,
+                                        isToday && styles.todayDateText
+                                    ]}>
+                                        {dayInfo.dayOfMonth}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                ))}
+
+                <TouchableOpacity 
+                    style={styles.closeButton}
+                    onPress={() => setShowCustomMonthPicker(false)}
+                >
+                    <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity 
                     style={styles.calendarButton}
-                    onPress={() => setShowDatePicker(true)}
+                    onPress={handleDatePress}
                 >
                     <Icon name="calendar" size={24} color="#007AFF" />
                     <Text style={styles.calendarText}>
-                        {format(selectedDate, 'MMM dd, yyyy')}
+                        {getDateRangeText()}
                     </Text>
                 </TouchableOpacity>
 
-                <Searchbar
-                    placeholder="Search work orders..."
-                    onChangeText={setSearchQuery}
-                    value={searchQuery}
-                    style={styles.searchBar}
-                />
+                <View style={{flex:1}}>
+                    <Searchbar
+                        placeholder="Search work orders..."
+                        onChangeText={setSearchQuery}
+                        value={searchQuery}
+                        style={styles.searchBar}
+                    />
+                </View>
 
                 <Menu
                     visible={showFilterMenu}
                     onDismiss={() => setShowFilterMenu(false)}
                     anchor={
                         <IconButton
-                            icon="filter-variant"
+                            icon="filter"
                             size={24}
                             onPress={() => setShowFilterMenu(true)}
                         />
@@ -399,7 +718,44 @@ export default function WorkOrderView() {
                 </Menu>
             </View>
 
-            {showDatePicker && (
+            <View style={styles.viewToggleContainer}>
+                <TouchableOpacity 
+                    style={[
+                        styles.toggleButton, 
+                        viewMode === 'month' && styles.toggleButtonActive
+                    ]}
+                    onPress={() => handleViewModeChange('month')}
+                >
+                    <Icon 
+                        name="calendar-month" 
+                        size={20} 
+                        color={viewMode === 'month' ? 'white' : '#666'} 
+                    />
+                    <Text style={[
+                        styles.toggleText,
+                        viewMode === 'month' && styles.toggleTextActive
+                    ]}>Month View</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[
+                        styles.toggleButton,
+                        viewMode === 'week' && styles.toggleButtonActive
+                    ]}
+                    onPress={() => handleViewModeChange('week')}
+                >
+                    <Icon 
+                        name="calendar-week" 
+                        size={20} 
+                        color={viewMode === 'week' ? 'white' : '#666'} 
+                    />
+                    <Text style={[
+                        styles.toggleText,
+                        viewMode === 'week' && styles.toggleTextActive
+                    ]}>Week View</Text>
+                </TouchableOpacity>
+            </View>
+
+            {viewMode === 'month' && showDatePicker && (
                 <DateTimePicker
                     value={selectedDate}
                     mode="date"
@@ -407,7 +763,8 @@ export default function WorkOrderView() {
                     onChange={handleDateChange}
                 />
             )}
-
+            
+            {viewMode === 'week' ? <WeekPicker /> : <MonthPicker />}
             <FlatList
                 data={filteredWorkOrders}
                 renderItem={renderWorkOrder}
@@ -450,6 +807,7 @@ const styles = StyleSheet.create({
         flex: 1,
         marginRight: 8,
         height: 40,
+        backgroundColor: '#f5f5f5',justifyContent: 'center',alignItems: 'center',alignSelf: 'center',
     },
     listContainer: {
         padding: 16,
@@ -515,5 +873,168 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         backgroundColor: '#007AFF',
+    },
+    viewToggleContainer: {
+        flexDirection: 'row',
+        padding: 8,
+        backgroundColor: '#f5f5f5',
+        marginHorizontal: 16,
+        marginTop: 8,
+        borderRadius: 8,
+        justifyContent: 'space-between',
+    },
+    toggleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 6,
+        flex: 1,
+        marginHorizontal: 4,
+        justifyContent: 'center',
+    },
+    toggleButtonActive: {
+        backgroundColor: '#2196F3',
+    },
+    toggleText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
+    },
+    toggleTextActive: {
+        color: 'white',
+    },
+    weekPickerContainer: {
+        position: 'absolute',
+        top: 120,
+        left: 16,
+        right: 16,
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        zIndex: 1000,
+    },
+    weekDayHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+        paddingBottom: 8,
+    },
+    weekDayText: {
+        flex: 1,
+        textAlign: 'center',
+        color: '#666',
+        fontWeight: '600',
+        fontSize: 12,
+    },
+    weekRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginVertical: 4,
+    },
+    weekDateCell: {
+        flex: 1,
+        aspectRatio: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: 2,
+        borderRadius: 8,
+        backgroundColor: '#f5f5f5',
+    },
+    weekDateNumber: {
+        fontSize: 16,
+        color: '#333',
+        fontWeight: '500',
+    },
+    selectedDate: {
+        backgroundColor: '#2196F3',
+    },
+    selectedDateText: {
+        color: 'white',
+        fontWeight: '600',
+    },
+    todayDate: {
+        borderWidth: 1,
+        borderColor: '#2196F3',
+    },
+    todayDateText: {
+        color: '#2196F3',
+        fontWeight: '600',
+    },
+    monthPickerContainer: {
+        position: 'absolute',
+        top: 120,
+        left: 16,
+        right: 16,
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        zIndex: 1000,
+    },
+    monthHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+        paddingHorizontal: 8,
+    },
+    monthNavButton: {
+        padding: 8,
+    },
+    monthYearText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
+    monthDate: {
+        flex: 1,
+        aspectRatio: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: 2,
+        borderRadius: 8,
+    },
+    monthDateText: {
+        fontSize: 14,
+        color: '#333',
+    },
+    selectedDate: {
+        backgroundColor: '#2196F3',
+    },
+    selectedDateText: {
+        color: 'white',
+        fontWeight: '600',
+    },
+    todayDate: {
+        borderWidth: 1,
+        borderColor: '#2196F3',
+    },
+    todayDateText: {
+        color: '#2196F3',
+        fontWeight: '600',
+    },
+    closeButton: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    closeButtonText: {
+        color: '#666',
+        fontWeight: '600',
     },
 });

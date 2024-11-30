@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
+import { StyleSheet, View, FlatList, RefreshControl, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { 
     Text,
@@ -23,8 +23,8 @@ import { useSelector, useDispatch } from 'react-redux';
 export default function AssetScreen() {
     const navigation = useNavigation();
     const dispatch = useDispatch();
-    const assets = useSelector(state => state.assets.assets);
-    const locations = useSelector(state => state.locations.locations);
+    const assets = useSelector(state => state?.asset?.assets || []);
+    const locations = useSelector(state => state?.location?.locations || []);
     
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Image, Text } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Card,
@@ -41,6 +41,8 @@ const WorkOrderDetails = () => {
   const [commentText, setCommentText] = useState('');
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(workOrder?.status || 'Open');
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState(null);
 
   if (!workOrder) {
     return (
@@ -136,30 +138,96 @@ const WorkOrderDetails = () => {
 
   const handleAddAttachment = async () => {
     try {
-      const result = await DocumentPicker.pick({
-        type: [DocumentPicker.types.allFiles],
+      const result = await ImagePicker.launchImageLibrary({
+        mediaType: 'photo',
+        quality: 1,
+        selectionLimit: 1,
       });
 
-      const newAttachment = {
-        name: result[0].name,
-        uri: result[0].uri,
-        type: result[0].type || 'application/octet-stream',
-        size: result[0].size || 0,
-      };
+      if (result.didCancel) return;
 
-      const updatedWorkOrder = {
-        ...workOrder,
-        attachments: [...(workOrder.attachments || []), newAttachment],
-        updatedAt: new Date().toISOString(),
-      };
+      if (result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const newAttachment = {
+          name: asset.fileName || 'image.jpg',
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          size: asset.fileSize || 0,
+          width: asset.width,
+          height: asset.height,
+        };
 
-      dispatch(updateWorkOrder(updatedWorkOrder));
-    } catch (err) {
-      if (!DocumentPicker.isCancel(err)) {
-        console.error('Error picking document:', err);
-        Alert.alert('Error', 'Failed to add attachment');
+        const updatedWorkOrder = {
+          ...workOrder,
+          attachments: [...(workOrder.attachments || []), newAttachment],
+          updatedAt: new Date().toISOString(),
+        };
+
+        dispatch(updateWorkOrder(updatedWorkOrder));
       }
+    } catch (err) {
+      console.error('Error picking image:', err);
+      Alert.alert('Error', 'Failed to add image');
     }
+  };
+
+  const handleEditImage = async (attachment) => {
+    try {
+      const result = await ImagePicker.launchImageLibrary({
+        mediaType: 'photo',
+        quality: 1,
+        selectionLimit: 1,
+      });
+
+      if (result.didCancel) return;
+
+      if (result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const updatedAttachment = {
+          ...attachment,
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          size: asset.fileSize || 0,
+          width: asset.width,
+          height: asset.height,
+        };
+
+        const updatedWorkOrder = {
+          ...workOrder,
+          attachments: workOrder.attachments.map(att => 
+            att.uri === attachment.uri ? updatedAttachment : att
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+
+        dispatch(updateWorkOrder(updatedWorkOrder));
+      }
+    } catch (err) {
+      console.error('Error editing image:', err);
+      Alert.alert('Error', 'Failed to edit image');
+    }
+  };
+
+  const handleDeleteAttachment = (attachment) => {
+    Alert.alert(
+      'Delete Attachment',
+      'Are you sure you want to delete this attachment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const updatedWorkOrder = {
+              ...workOrder,
+              attachments: workOrder.attachments.filter(att => att.uri !== attachment.uri),
+              updatedAt: new Date().toISOString(),
+            };
+            dispatch(updateWorkOrder(updatedWorkOrder));
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -296,11 +364,36 @@ const WorkOrderDetails = () => {
               <List.Section>
                 <Title style={styles.sectionTitle}>Attachments</Title>
                 {workOrder.attachments.map((attachment, index) => (
-                  <List.Item
-                    key={index}
-                    title={attachment}
-                    left={props => <List.Icon {...props} icon="file" />}
-                  />
+                  <View key={index} style={styles.attachmentContainer}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedAttachment(attachment);
+                        setShowImageOptions(true);
+                      }}
+                    >
+                      {attachment.type?.startsWith('image/') ? (
+                        <View style={styles.imageContainer}>
+                          <Image
+                            source={{ uri: attachment.uri }}
+                            style={styles.attachmentImage}
+                            resizeMode="cover"
+                          />
+                          <View style={styles.imageOverlay}>
+                            <Text style={styles.imageName}>{attachment.name}</Text>
+                            <Text style={styles.imageSize}>
+                              {`${(attachment.size / 1024).toFixed(1)} KB`}
+                            </Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <List.Item
+                          title={attachment.name || 'Unnamed attachment'}
+                          description={`${(attachment.size / 1024).toFixed(1)} KB`}
+                          left={props => <List.Icon {...props} icon="file" />}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </List.Section>
             )}
@@ -368,6 +461,37 @@ const WorkOrderDetails = () => {
           <Dialog.Actions>
             <Button onPress={() => setShowCommentDialog(false)}>Cancel</Button>
             <Button onPress={handleAddComment} mode="contained">Add</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      <Portal>
+        <Dialog visible={showImageOptions} onDismiss={() => setShowImageOptions(false)}>
+          <Dialog.Title>Image Options</Dialog.Title>
+          <Dialog.Content>
+            <Button
+              mode="outlined"
+              onPress={() => {
+                setShowImageOptions(false);
+                handleEditImage(selectedAttachment);
+              }}
+              style={styles.dialogButton}
+            >
+              Edit Image
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={() => {
+                setShowImageOptions(false);
+                handleDeleteAttachment(selectedAttachment);
+              }}
+              style={[styles.dialogButton, styles.deleteButton]}
+            >
+              Delete Image
+            </Button>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowImageOptions(false)}>Cancel</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -477,6 +601,44 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 8,
+  },
+  attachmentContainer: {
+    marginVertical: 8,
+  },
+  imageContainer: {
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginHorizontal: 16,
+  },
+  attachmentImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#f0f0f0',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 8,
+  },
+  imageName: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  imageSize: {
+    color: 'white',
+    fontSize: 12,
+  },
+  dialogButton: {
+    marginVertical: 4,
+  },
+  deleteButton: {
+    borderColor: '#FF0000',
+    color: '#FF0000',
   },
 });
 

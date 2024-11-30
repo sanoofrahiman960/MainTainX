@@ -10,7 +10,7 @@ import { Alert } from 'react-native';
 export default function LocationScreen() {
     const navigation = useNavigation();
     const dispatch = useDispatch();
-    const locations = useSelector(state => state.locations.locations);
+    const locations = useSelector(state => state?.location?.locations || []);
     const [searchQuery, setSearchQuery] = useState('');
 
     const handleDeleteLocation = (locationId) => {
