@@ -18,7 +18,7 @@ import {
 } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSelector, useDispatch } from 'react-redux';
-// import { deleteAsset } from '../../Redux/slices/assetSlice';
+import { deleteAssets } from '../../redux/actions/locationAction';
 
 export default function AssetScreen() {
     const navigation = useNavigation();
@@ -49,7 +49,8 @@ export default function AssetScreen() {
 
     const confirmDelete = () => {
         if (selectedAsset) {
-            dispatch(deleteAsset(selectedAsset.id));
+            console.log('Deleting asset:', selectedAsset.id);
+            dispatch(deleteAssets(selectedAsset.id));
             setDeleteDialogVisible(false);
             setSelectedAsset(null);
         }

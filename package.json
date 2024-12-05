@@ -21,6 +21,8 @@
     "@reduxjs/toolkit": "^2.3.0",
     "@rneui/base": "^4.0.0-rc.7",
     "@rneui/themed": "^4.0.0-rc.8",
+    "apisauce": "^3.1.0",
+    "axios": "^1.7.8",
     "date-fns": "^4.1.0",
     "react": "18.2.0",
     "react-native": "0.74.0",
