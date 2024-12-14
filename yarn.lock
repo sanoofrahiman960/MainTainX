@@ -1503,10 +1503,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@react-native-async-storage/async-storage@^1.24.0":
-  version "1.24.0"
-  resolved "https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-1.24.0.tgz"
-  integrity sha512-W4/vbwUOYOjco0x3toB8QCr7EjIP6nE9G7o8PMguvvjYT5Awg09lyV4enACRx4s++PPulBiBSjL0KTFx2u0Z/g==
+"@react-native-async-storage/async-storage@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@react-native-async-storage/async-storage/-/async-storage-2.1.0.tgz#84ca82af320c16d3d8e617508ea523fe786b6781"
+  integrity sha512-eAGQGPTAuFNEoIQSB5j2Jh1zm5NPyBRTfjRMfCN0W1OakC5WIB5vsDyIQhUweKN9XOE2/V07lqTMGsL0dGXNkA==
   dependencies:
     merge-options "^3.0.4"
 
@@ -5373,6 +5373,11 @@ minimist@^1.2.6:
   resolved "https://registry.npmjs.org/minimist/-/minimist-1.2.8.tgz"
   integrity sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==
 
+mitt@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/mitt/-/mitt-3.0.1.tgz#ea36cf0cc30403601ae074c8f77b7092cdab36d1"
+  integrity sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==
+
 mkdirp@^0.5.1:
   version "0.5.6"
   resolved "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.6.tgz"
@@ -6124,6 +6129,36 @@ react@18.2.0:
   integrity sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==
   dependencies:
     loose-envify "^1.1.0"
+
+reactotron-core-client@2.9.6:
+  version "2.9.6"
+  resolved "https://registry.yarnpkg.com/reactotron-core-client/-/reactotron-core-client-2.9.6.tgz#3130f06d85dec2a8d50404ffa4520f8c6cc04002"
+  integrity sha512-7krCkKn/uy8VF1UhSmgrhYsPJ2VNJ+btYSG0S8NBlhW/EtsRHUtLQy+tbBVg2cHaTHbejY4qrvr0yP5L7L2Osw==
+  dependencies:
+    reactotron-core-contract "0.2.4"
+
+reactotron-core-contract@0.2.4:
+  version "0.2.4"
+  resolved "https://registry.yarnpkg.com/reactotron-core-contract/-/reactotron-core-contract-0.2.4.tgz#c7038ce6bac5b8674b462895d7fe5e30661b24e8"
+  integrity sha512-CmNYahBdk9uES4vimlRsoM1gAQA6T5gXTuJzDvduOjKd0IZufZjkxzBAvhpkX5OIkPl4Xlsv+1AHXLWSJSwFLA==
+
+reactotron-react-native@^5.1.10:
+  version "5.1.10"
+  resolved "https://registry.yarnpkg.com/reactotron-react-native/-/reactotron-react-native-5.1.10.tgz#572a1332839e0be7036e2d47328654d4252fe3ce"
+  integrity sha512-CD20odAESgH0K2YJCyfJLQg5K5Ho1qnk0QBB3SjD1yjt5BJhPuHjdXFyuED8PYLgOz+YwOX7jyK2/wu3TCp1OQ==
+  dependencies:
+    mitt "^3.0.1"
+    reactotron-core-client "2.9.6"
+
+reactotron-redux-saga@^4.2.3:
+  version "4.2.3"
+  resolved "https://registry.yarnpkg.com/reactotron-redux-saga/-/reactotron-redux-saga-4.2.3.tgz#13071f792be987f47b89cae8c29a8e7254d8383d"
+  integrity sha512-Vo/zjwYyd93nT4h4SJkvhE5WIBk7AnZg5NPM0NF3auwPEz78ZR2xnnyCt2JPYFSvyy6ykNpS7vA7FeREgFkNCQ==
+
+reactotron-redux@^3.1.10:
+  version "3.1.10"
+  resolved "https://registry.yarnpkg.com/reactotron-redux/-/reactotron-redux-3.1.10.tgz#e00f5e22385dfa6cf0f3e00062617363902870c5"
+  integrity sha512-35uD3SlUxkgQm6g/S8+bYho6N47KzH2lAsjXnWirKUXS23Hb6ovOsWnrNb8JipLzfMgb2CCpL7oHB5FCwr4RoQ==
 
 readable-stream@^3.4.0:
   version "3.6.2"

@@ -16,7 +16,9 @@ import AppContent from './Navigation/Navigation';
 
 const Stack = createStackNavigator();
 
-
+if (__DEV__) {
+  require("././Util/Reactron");
+}
 
 const App = () => {
   return (

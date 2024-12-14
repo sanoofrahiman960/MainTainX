@@ -1,16 +1,20 @@
-import React, { useState, useMemo } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, Text, ScrollView, Platform } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { StyleSheet, View, FlatList, TouchableOpacity, Text, ScrollView, Platform,ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card, Searchbar, IconButton, Menu, Divider, Badge, FAB } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSelector } from 'react-redux';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, startOfWeek, endOfWeek, isSameDay, isWithinInterval } from 'date-fns';
+import axios from 'axios';
+import { getData } from '../../Util/Storage';
+import { BASE_URL } from '../../Util/Const';
 
 export default function WorkOrderView() {
     const navigation = useNavigation();
-    const workOrders = useSelector(state => state.workOrder?.workOrders || []);
-    console.log('Work Orders:', workOrders);
+    const [workOrderData, setWorkOrderData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const locations = useSelector(state => state.location?.locations || []);
     const assets = useSelector(state => state.asset?.assets || []);
 
@@ -36,6 +40,53 @@ export default function WorkOrderView() {
     const [viewMode, setViewMode] = useState('month'); // 'month' or 'week'
     const [showCustomWeekPicker, setShowCustomWeekPicker] = useState(false);
     const [showCustomMonthPicker, setShowCustomMonthPicker] = useState(false);
+
+    useEffect(() => {
+        const fetchWorkOrders = async () => {
+            setLoading(true);
+            try {
+                const Token = await getData("ACCESS_TOKEN");
+                const IDs = await getData("EMPLOYEE_ID");
+                console.log("IDs", IDs,Token);
+                const empResponse = await fetch(`${BASE_URL}/web/dataset/call_kw`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cookie': `X-OpenERP=${Token}`,
+                    },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        params: {
+                            "model": "maintenance.request",
+                            "method": "search_read",
+                            "args": [],
+                            "kwargs": {
+                                "fields": ["name", "priority", "stage_id", "due_date", "employee_ids", "contact_location_id", "partner_id"],
+                                "domain": [["employee_ids", "in", [17]]]
+                            }
+                        },
+                    }),
+                });
+                const empData = await empResponse.json();
+                console.log("empData.result", empData.result);
+                
+                if (empData.result) {
+                    setWorkOrderData(empData.result);
+                    // dispatch(addWorkOrder(empData.result));
+                    setError(null);
+                } else {
+                    setError('No data received from server');
+                }
+            } catch (err) {
+                console.error('Error fetching work orders:', err);
+                setError('Failed to fetch work orders');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWorkOrders();
+    }, []);
 
     const handleDateChange = (event, date) => {
         setShowDatePicker(false);
@@ -117,52 +168,49 @@ export default function WorkOrderView() {
         return format(selectedDate, 'MMM dd, yyyy');
     };
 
-    const getLocationName = (locationId) => {
-        const location = locations.find(loc => loc.id === locationId);
-        return location ? location.name : 'Unknown Location';
-    };
-
-    const getAssetName = (assetId) => {
-        const asset = assets.find(ast => ast.id === assetId);
-        return asset ? asset.name : 'Unknown Asset';
-    };
+ 
 
     const getPriorityColor = (priority) => {
         switch (priority) {
             case 0:
-                return '#4CAF50'; // Low
+                return '#5174e8'; // Low
             case 1:
-                return '#FFA000'; // Medium
+                return '#61f299'; // Medium
             case 2:
-                return '#FF4444'; // High
+                return 'green'; // High
+            case 3:
+                return '#eb1b0c'; // Highest
             default:
-                return '#757575';
+                return '#5174e8';
         }
     };
 
     const getPriorityText = (priority) => {
         switch (priority) {
             case 0:
-                return 'Low';
+                return 'None';
             case 1:
-                return 'Medium';
+                return 'Low';
             case 2:
+                return 'Medium';
+            case 3:
                 return 'High';
             default:
-                return 'Unknown';
+                return 'None';
         }
     };
 
     const getStatusColor = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'open':
-                return '#2196F3'; // Blue
-            case 'in progress':
-                return '#FFA000'; // Yellow/Orange
-            case 'on hold':
-                return '#F44336'; // Red
-            case 'completed':
-                return '#4CAF50'; // Green
+        console.log("status", status);
+        switch (status) {
+            case 'New':
+                return '#4daae8'; // Blue
+            case 'In Progress':
+                return '#2e8ee8'; // Yellow/Orange
+            case 'On Hold':
+                return '#ed9624'; // Red
+            case 'Done':
+                return '#135233'; // Green
             default:
                 return '#757575'; // Grey
         }
@@ -187,57 +235,7 @@ export default function WorkOrderView() {
         setSelectedDate(new Date());
     };
 
-    const filteredWorkOrders = useMemo(() => {
-        return workOrders.filter(order => {
-            // Ensure we have a valid date to compare
-            if (!order.dueDate) return false;
-            
-            // Convert order due date to Date object for comparison
-            const orderDueDate = new Date(order.dueDate);
-            
-            // Check date filter based on view mode
-            let dateMatches = true;
-            
-            if (viewMode === 'month' && filters.dueDate) {
-                // For month view, compare the day, month, and year
-                dateMatches = (
-                    orderDueDate.getDate() === filters.dueDate.getDate() &&
-                    orderDueDate.getMonth() === filters.dueDate.getMonth() &&
-                    orderDueDate.getFullYear() === filters.dueDate.getFullYear()
-                );
-            } else if (viewMode === 'week' && filters.weekStart && filters.weekEnd) {
-                // For week view, check if the date falls within the week range
-                const orderTime = orderDueDate.getTime();
-                const startTime = filters.weekStart.getTime();
-                const endTime = filters.weekEnd.getTime();
-                dateMatches = orderTime >= startTime && orderTime <= endTime;
-            }
-
-            // Check search query
-            const searchMatches = !searchQuery || 
-                (order.title && order.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (order.description && order.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (order.location && order.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (order.asset && order.asset.toLowerCase().includes(searchQuery.toLowerCase()));
-
-            // Check other filters
-            const statusMatches = !filters.status || order.status === filters.status;
-            const priorityMatches = !filters.priority || order.priority === filters.priority;
-            const locationMatches = !filters.location || order.location === filters.location;
-            const categoryMatches = !filters.category || (order.categories && order.categories.includes(filters.category));
-            const workTypeMatches = !filters.workType || order.workType === filters.workType;
-            const assetMatches = !filters.asset || order.asset === filters.asset;
-            const assetTypeMatches = !filters.assetType || order.assetType === filters.assetType;
-            const vendorMatches = !filters.vendor || order.vendor === filters.vendor;
-            const partMatches = !filters.part || (order.parts && order.parts.includes(filters.part));
-            const procedureMatches = !filters.procedure || order.procedure === filters.procedure;
-
-            // Return true only if all conditions match
-            return dateMatches && searchMatches && statusMatches && priorityMatches &&
-                   locationMatches && categoryMatches && workTypeMatches && assetMatches &&
-                   assetTypeMatches && vendorMatches && partMatches && procedureMatches;
-        });
-    }, [workOrders, filters, searchQuery, viewMode]);
+   
 
     const renderWorkOrder = ({ item }) => (
         <TouchableOpacity onPress={() => navigation.navigate('WorkOrderDetails', { workOrderId: item.id })}>
@@ -245,54 +243,38 @@ export default function WorkOrderView() {
                 <Card.Content>
                     <View style={styles.cardHeader}>
                         <View style={styles.titleContainer}>
-                            <Text style={styles.title}>{item.task || 'Untitled Task'}</Text>
+                            <Text style={styles.title}>{item.name}</Text>
                             <View style={styles.badgeContainer}>
                                 <Badge 
-                                    style={[styles.badge, { backgroundColor: getPriorityColor(item.priorityIndex) }]}
+                                    style={[styles.badge, { backgroundColor: getPriorityColor(parseInt(item.priority)) }]}
                                 >
-                                    {getPriorityText(item.priorityIndex)}
+                                    {getPriorityText(parseInt(item.priority))}
                                 </Badge>
                                 <Badge 
-                                    style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}
+                                    style={[styles.badge, { backgroundColor: getStatusColor(item.stage_id[1]) }]}
                                 >
-                                    {item.status || 'Open'}
+                                    {item.stage_id[1]}
                                 </Badge>
                             </View>
                         </View>
-                        {item.dueDate && (
-                            <Text style={styles.dueDate}>
-                                Due: {format(new Date(item.dueDate), 'MMM dd, yyyy')}
-                            </Text>
-                        )}
                     </View>
-                    {item.description && (
-                        <Text style={styles.description} numberOfLines={2}>
-                            {item.description}
-                        </Text>
-                    )}
-                    <View style={styles.detailsContainer}>
-                        {item.location && (
-                            <View style={styles.detail}>
+                    <View style={styles.cardContent}>
+                        {item.contact_location_id && (
+                            <View style={styles.infoRow}>
                                 <Icon name="map-marker" size={16} color="#666" />
-                                <Text style={styles.detailText}>{item.location}</Text>
+                                <Text style={styles.infoText}>{item.contact_location_id[1]}</Text>
                             </View>
                         )}
-                        {item.asset && (
-                            <View style={styles.detail}>
-                                <Icon name="cube-outline" size={16} color="#666" />
-                                <Text style={styles.detailText}>{item.asset}</Text>
+                        {item.due_date && (
+                            <View style={styles.infoRow}>
+                                <Icon name="calendar" size={16} color="#666" />
+                                <Text style={styles.infoText}>{new Date(item.due_date).toLocaleDateString()}</Text>
                             </View>
                         )}
-                        {item.assignedTo && (
-                            <View style={styles.detail}>
-                                <Icon name="account" size={16} color="#666" />
-                                <Text style={styles.detailText}>{item.assignedTo}</Text>
-                            </View>
-                        )}
-                        {item.workType && (
-                            <View style={styles.detail}>
-                                <Icon name="wrench" size={16} color="#666" />
-                                <Text style={styles.detailText}>{item.workType}</Text>
+                        {item.partner_id && (
+                            <View style={styles.infoRow}>
+                                <Icon name="account-group" size={16} color="#666" />
+                                <Text style={styles.infoText}>{item.partner_id[1]}</Text>
                             </View>
                         )}
                     </View>
@@ -520,265 +502,328 @@ export default function WorkOrderView() {
         );
     };
 
-    return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity 
-                    style={styles.calendarButton}
-                    onPress={handleDatePress}
-                >
-                    <Icon name="calendar" size={24} color="#007AFF" />
-                    <Text style={styles.calendarText}>
-                        {getDateRangeText()}
-                    </Text>
-                </TouchableOpacity>
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
+                    <ActivityIndicator size="large" color="#007AFF" />
+                </View>
+            );
+        }
 
-                <View style={{flex:1}}>
-                    <Searchbar
-                        placeholder="Search work orders..."
-                        onChangeText={setSearchQuery}
-                        value={searchQuery}
-                        style={styles.searchBar}
-                    />
+        if (error) {
+            return (
+                <View style={styles.container}>
+                    <Text>Error: {error}</Text>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity 
+                        style={styles.calendarButton}
+                        onPress={handleDatePress}
+                    >
+                        <Icon name="calendar" size={24} color="#007AFF" />
+                        <Text style={styles.calendarText}>
+                            {getDateRangeText()}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <View style={{flex:1}}>
+                        <Searchbar
+                            placeholder="Search work orders..."
+                            onChangeText={setSearchQuery}
+                            value={searchQuery}
+                            style={styles.searchBar}
+                        />
+                    </View>
+
+                    <Menu
+                        visible={showFilterMenu}
+                        onDismiss={() => setShowFilterMenu(false)}
+                        anchor={
+                            <IconButton
+                                icon="filter"
+                                size={24}
+                                onPress={() => setShowFilterMenu(true)}
+                            />
+                        }
+                    >
+                        <Menu.Item 
+                            title="Due Date"
+                            onPress={() => setShowDatePicker(true)}
+                            leadingIcon="calendar"
+                        />
+                        <Divider />
+                        
+                        <Menu.Item 
+                            title="Status"
+                            leadingIcon="flag"
+                            onPress={() => setShowFilterMenu(false)}
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setFilters(prev => ({ ...prev, status: 'Open' }));
+                                setShowFilterMenu(false);
+                            }} 
+                            title="Open"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setFilters(prev => ({ ...prev, status: 'In Progress' }));
+                                setShowFilterMenu(false);
+                            }} 
+                            title="In Progress"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setFilters(prev => ({ ...prev, status: 'On Hold' }));
+                                setShowFilterMenu(false);
+                            }} 
+                            title="On Hold"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setFilters(prev => ({ ...prev, status: 'Completed' }));
+                                setShowFilterMenu(false);
+                            }} 
+                            title="Completed"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Priority"
+                            leadingIcon="alert-circle"
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setFilters(prev => ({ ...prev, priority: 2 }));
+                                setShowFilterMenu(false);
+                            }} 
+                            title="High Priority"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setFilters(prev => ({ ...prev, priority: 1 }));
+                                setShowFilterMenu(false);
+                            }} 
+                            title="Medium Priority"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Menu.Item 
+                            onPress={() => {
+                                setFilters(prev => ({ ...prev, priority: 0 }));
+                                setShowFilterMenu(false);
+                            }} 
+                            title="Low Priority"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Location"
+                            onPress={() => {
+                                // TODO: Show location picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="map-marker"
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Asset"
+                            onPress={() => {
+                                // TODO: Show asset picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="cube-outline"
+                        />
+                        <Menu.Item 
+                            title="Asset Type"
+                            onPress={() => {
+                                // TODO: Show asset type picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="cube-scan"
+                            style={{ paddingLeft: 30 }}
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Work Type"
+                            onPress={() => {
+                                // TODO: Show work type picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="wrench"
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Category"
+                            onPress={() => {
+                                // TODO: Show category picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="tag"
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Vendor"
+                            onPress={() => {
+                                // TODO: Show vendor picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="store"
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Part"
+                            onPress={() => {
+                                // TODO: Show part picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="cog"
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            title="Procedure"
+                            onPress={() => {
+                                // TODO: Show procedure picker
+                                setShowFilterMenu(false);
+                            }}
+                            leadingIcon="file-document"
+                        />
+                        <Divider />
+
+                        <Menu.Item 
+                            onPress={() => {
+                                clearFilters();
+                                setShowFilterMenu(false);
+                            }} 
+                            title="Clear All Filters"
+                            leadingIcon="filter-remove"
+                        />
+                    </Menu>
                 </View>
 
-                <Menu
-                    visible={showFilterMenu}
-                    onDismiss={() => setShowFilterMenu(false)}
-                    anchor={
-                        <IconButton
-                            icon="filter"
-                            size={24}
-                            onPress={() => setShowFilterMenu(true)}
+                <View style={styles.viewToggleContainer}>
+                    <TouchableOpacity 
+                        style={[
+                            styles.toggleButton, 
+                            viewMode === 'month' && styles.toggleButtonActive
+                        ]}
+                        onPress={() => handleViewModeChange('month')}
+                    >
+                        <Icon 
+                            name="calendar-month" 
+                            size={20} 
+                            color={viewMode === 'month' ? 'white' : '#666'} 
                         />
-                    }
-                >
-                    <Menu.Item 
-                        title="Due Date"
-                        onPress={() => setShowDatePicker(true)}
-                        leadingIcon="calendar"
-                    />
-                    <Divider />
-                    
-                    <Menu.Item 
-                        title="Status"
-                        leadingIcon="flag"
-                    />
-                    <Menu.Item 
-                        onPress={() => {
-                            setFilters(prev => ({ ...prev, status: 'Open' }));
-                            setShowFilterMenu(false);
-                        }} 
-                        title="Open"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Menu.Item 
-                        onPress={() => {
-                            setFilters(prev => ({ ...prev, status: 'In Progress' }));
-                            setShowFilterMenu(false);
-                        }} 
-                        title="In Progress"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Menu.Item 
-                        onPress={() => {
-                            setFilters(prev => ({ ...prev, status: 'On Hold' }));
-                            setShowFilterMenu(false);
-                        }} 
-                        title="On Hold"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Menu.Item 
-                        onPress={() => {
-                            setFilters(prev => ({ ...prev, status: 'Completed' }));
-                            setShowFilterMenu(false);
-                        }} 
-                        title="Completed"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Divider />
+                        <Text style={[
+                            styles.toggleText,
+                            viewMode === 'month' && styles.toggleTextActive
+                        ]}>Month View</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[
+                            styles.toggleButton,
+                            viewMode === 'week' && styles.toggleButtonActive
+                        ]}
+                        onPress={() => handleViewModeChange('week')}
+                    >
+                        <Icon 
+                            name="calendar-week" 
+                            size={20} 
+                            color={viewMode === 'week' ? 'white' : '#666'} 
+                        />
+                        <Text style={[
+                            styles.toggleText,
+                            viewMode === 'week' && styles.toggleTextActive
+                        ]}>Week View</Text>
+                    </TouchableOpacity>
+                </View>
 
-                    <Menu.Item 
-                        title="Priority"
-                        leadingIcon="alert-circle"
+                {viewMode === 'week' ? <WeekPicker /> : <MonthPicker />}
+                
+                {showDatePicker && (
+                    <DateTimePicker
+                        value={selectedDate}
+                        mode="date"
+                        display="default"
+                        onChange={handleDateChange}
                     />
-                    <Menu.Item 
-                        onPress={() => {
-                            setFilters(prev => ({ ...prev, priority: 2 }));
-                            setShowFilterMenu(false);
-                        }} 
-                        title="High Priority"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Menu.Item 
-                        onPress={() => {
-                            setFilters(prev => ({ ...prev, priority: 1 }));
-                            setShowFilterMenu(false);
-                        }} 
-                        title="Medium Priority"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Menu.Item 
-                        onPress={() => {
-                            setFilters(prev => ({ ...prev, priority: 0 }));
-                            setShowFilterMenu(false);
-                        }} 
-                        title="Low Priority"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Divider />
+                )}
+                
+                <FlatList
+                    data={workOrderData.filter(order => {
+                        // Search query filter
+                        const searchMatches = !searchQuery || 
+                            (order.name && order.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                            (order.contact_location_id && order.contact_location_id[1].toLowerCase().includes(searchQuery.toLowerCase())) ||
+                            (order.partner_id && order.partner_id[1].toLowerCase().includes(searchQuery.toLowerCase()));
 
-                    <Menu.Item 
-                        title="Location"
-                        onPress={() => {
-                            // TODO: Show location picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="map-marker"
-                    />
-                    <Divider />
+                        // Date filter
+                        let dateMatches = true;
+                        if (filters.dueDate && order.due_date) {
+                            const orderDueDate = new Date(order.due_date);
+                            const filterDate = new Date(filters.dueDate);
+                            
+                            dateMatches = (
+                                orderDueDate.getFullYear() === filterDate.getFullYear() &&
+                                orderDueDate.getMonth() === filterDate.getMonth() &&
+                                orderDueDate.getDate() === filterDate.getDate()
+                            );
+                        }
 
-                    <Menu.Item 
-                        title="Asset"
-                        onPress={() => {
-                            // TODO: Show asset picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="cube-outline"
-                    />
-                    <Menu.Item 
-                        title="Asset Type"
-                        onPress={() => {
-                            // TODO: Show asset type picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="cube-scan"
-                        style={{ paddingLeft: 30 }}
-                    />
-                    <Divider />
+                        // Status filter based on stage_id[1]
+                        const statusMatches = !filters.status || (
+                            (filters.status === 'New' && order.stage_id[1] === 'New') ||
+                            (filters.status === 'In Progress' && order.stage_id[1] === 'In Progress') ||
+                            (filters.status === 'On Hold' && order.stage_id[1] === 'On Hold') ||
+                            (filters.status === 'Done' && order.stage_id[1] === 'Done')
+                        );
 
-                    <Menu.Item 
-                        title="Work Type"
-                        onPress={() => {
-                            // TODO: Show work type picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="wrench"
-                    />
-                    <Divider />
+                        // Priority filter (converting string to number)
+                        const priorityMatches = !filters.priority || parseInt(order.priority) === filters.priority;
 
-                    <Menu.Item 
-                        title="Category"
-                        onPress={() => {
-                            // TODO: Show category picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="tag"
-                    />
-                    <Divider />
+                        // Location filter
+                        const locationMatches = !filters.location || 
+                            (order.contact_location_id && order.contact_location_id[0] === filters.location);
 
-                    <Menu.Item 
-                        title="Vendor"
-                        onPress={() => {
-                            // TODO: Show vendor picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="store"
-                    />
-                    <Divider />
+                        // Partner/Vendor filter
+                        const vendorMatches = !filters.vendor || 
+                            (order.partner_id && order.partner_id[0] === filters.vendor);
 
-                    <Menu.Item 
-                        title="Part"
-                        onPress={() => {
-                            // TODO: Show part picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="cog"
-                    />
-                    <Divider />
-
-                    <Menu.Item 
-                        title="Procedure"
-                        onPress={() => {
-                            // TODO: Show procedure picker
-                            setShowFilterMenu(false);
-                        }}
-                        leadingIcon="file-document"
-                    />
-                    <Divider />
-
-                    <Menu.Item 
-                        onPress={() => {
-                            clearFilters();
-                            setShowFilterMenu(false);
-                        }} 
-                        title="Clear All Filters"
-                        leadingIcon="filter-remove"
-                    />
-                </Menu>
-            </View>
-
-            <View style={styles.viewToggleContainer}>
-                <TouchableOpacity 
-                    style={[
-                        styles.toggleButton, 
-                        viewMode === 'month' && styles.toggleButtonActive
-                    ]}
-                    onPress={() => handleViewModeChange('month')}
-                >
-                    <Icon 
-                        name="calendar-month" 
-                        size={20} 
-                        color={viewMode === 'month' ? 'white' : '#666'} 
-                    />
-                    <Text style={[
-                        styles.toggleText,
-                        viewMode === 'month' && styles.toggleTextActive
-                    ]}>Month View</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                    style={[
-                        styles.toggleButton,
-                        viewMode === 'week' && styles.toggleButtonActive
-                    ]}
-                    onPress={() => handleViewModeChange('week')}
-                >
-                    <Icon 
-                        name="calendar-week" 
-                        size={20} 
-                        color={viewMode === 'week' ? 'white' : '#666'} 
-                    />
-                    <Text style={[
-                        styles.toggleText,
-                        viewMode === 'week' && styles.toggleTextActive
-                    ]}>Week View</Text>
-                </TouchableOpacity>
-            </View>
-
-            {viewMode === 'month' && showDatePicker && (
-                <DateTimePicker
-                    value={selectedDate}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
+                        return dateMatches && searchMatches && statusMatches && 
+                               priorityMatches && locationMatches && vendorMatches;
+                    })}
+                    renderItem={renderWorkOrder}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.listContainer}
                 />
-            )}
-            
-            {viewMode === 'week' ? <WeekPicker /> : <MonthPicker />}
-            <FlatList
-                data={filteredWorkOrders}
-                renderItem={renderWorkOrder}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.listContainer}
-            />
 
-            <FAB
-                icon="plus"
-                style={styles.fab}
-                onPress={() => navigation.navigate('WorkListing')}
-            />
-        </View>
-    );
+                <FAB
+                    icon="plus"
+                    style={styles.fab}
+                    onPress={() => navigation.navigate('NewWorkOrder')}
+                />
+            </View>
+        );
+    };
+
+    return renderContent();
 }
 
 const styles = StyleSheet.create({
@@ -1036,5 +1081,18 @@ const styles = StyleSheet.create({
     closeButtonText: {
         color: '#666',
         fontWeight: '600',
+    },
+    cardContent: {
+        padding: 8,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    infoText: {
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 4,
     },
 });

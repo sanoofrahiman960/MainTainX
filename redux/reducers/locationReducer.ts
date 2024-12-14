@@ -3,6 +3,7 @@ import { ADD_LOCATION,DELETE_LOCATION,ADD_ASSETS,DELETE_ASSETS } from '../action
 const initialState = {
   locations: [],
   assets:[],
+  
 };
 
 const locationReducer = (state = initialState, action:any) => {

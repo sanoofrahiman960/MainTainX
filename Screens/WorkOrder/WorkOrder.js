@@ -209,7 +209,7 @@ export default function NewWorkOrder() {
 console.log("neww,",newWorkOrder);
          dispatch(addWorkOrder(newWorkOrder));
         // Navigate to Tabs and then to WorkOrders screen
-        navigation.navigate('Tabs', { screen: 'WorkOrders' });
+        navigation.navigate('Tabs', { screen: 'Work Orders' });
     };
 
     // Component rendering

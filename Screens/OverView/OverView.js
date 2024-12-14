@@ -15,6 +15,9 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { signOut } from '../../redux/reducers/authReducer';
 import { useSelector, useDispatch } from 'react-redux';
+import * as asyncCache from '../../Util/Storage';
+import { set } from 'date-fns';
+import { CommonActions } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2; // 16px padding on each side, 16px gap
@@ -24,6 +27,7 @@ export default function LandingScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('Overview');
   const [isModalVisible, setModalVisible] = useState(false);
+  const [employeeName, setEmployeeName] = useState('');
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
   const workOrders = useSelector(state => state.workOrder?.workOrders || []);
@@ -43,6 +47,14 @@ export default function LandingScreen() {
     return () => clearTimeout(timer);
   }, [navigation, scaleAnim]);
 
+  useEffect(() => {
+    const fetchEmployeeName = async () => {
+      const Name = await asyncCache.getData("EMPLOYEE_NAME");
+      setEmployeeName(Name);
+    };
+    fetchEmployeeName();
+  }, [user]);
+
   const getWorkOrderCounts = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -60,15 +72,8 @@ export default function LandingScreen() {
   const workOrderCounts = getWorkOrderCounts();
 
   const handleAccount = () => {
-    dispatch(signOut())
-      .unwrap()
-      .then((message) => {
-        console.log('SignOut Success:', message);
-        navigation.navigate('SignIn');
-      })
-      .catch((error) => {
-        console.error('SignOut Error:', error);
-      });
+    asyncCache.clearAll();
+  
   };
     
   const CreateOption = ({ icon, label, onPress }) => (
@@ -94,6 +99,7 @@ export default function LandingScreen() {
     { id: 3, title: 'Pending Approval', icon: 'alert-circle-outline', count: workOrderCounts.pendingApproval, color: '#4CAF50' },
     { id: 4, title: 'Completed', icon: 'check-circle-outline', count: workOrderCounts.completed, color: '#2196F3' },
   ];
+
 
   const renderActionButton = ({ title, icon, color }) => (
     <TouchableOpacity
@@ -139,7 +145,7 @@ export default function LandingScreen() {
       <ScrollView style={styles.scrollView}>
         <Animated.View style={[styles.content, { transform: [{ scale: scaleAnim }] }]}>
           <View style={styles.header}>
-            <Text style={styles.name}>{user ? user.name : 'Guest'}</Text>
+            <Text style={styles.name}>{employeeName ? employeeName : 'Guest'}</Text>
             <TouchableOpacity onPress={handleAccount} style={styles.accountButton}>
               <Icon name="account" size={20} color="#FFFFFF" />
             </TouchableOpacity>
