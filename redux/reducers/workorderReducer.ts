@@ -2,6 +2,7 @@ import {
   WorkOrderState,
   WorkOrderActionTypes,
   ADD_WORKORDER,
+  WORKORDER,
   UPDATE_WORKORDER,
   DELETE_WORKORDER,
   SET_WORKORDER_LOADING,
@@ -10,6 +11,7 @@ import {
 
 const initialState: WorkOrderState = {
   workOrders: [],
+  workOrderViews: [],
   loading: false,
   error: null
 };
@@ -27,6 +29,14 @@ const workorderReducer = (
         workOrders: [...state.workOrders, action.payload],
         error: null
       };
+      case WORKORDER:
+        console.log("action",action.payload);
+        return {
+          
+          ...state,
+          workOrderViews: [...state.workOrderViews, action.payload],
+          error: null
+        };
 
     case UPDATE_WORKORDER:
       return {

@@ -54,7 +54,10 @@ const LoginMasterScreen = ({ navigation, route }) => {
 
       if (data.result) {
         // Store session token
+        console.log("data.result.ocn_token_key", data.result.user_companies?.current_company)
         await asyncCache.storeData('ACCESS_TOKEN', data.result.ocn_token_key);
+      await asyncCache.storeData('COMPANY_ID', data.result.user_companies?.current_company);
+      await asyncCache.storeData('USER_ID', data.result.uid);
         
         // Search for employee details
         const empResponse = await fetch(`${serverUrl}/web/dataset/call_kw`, {
@@ -83,6 +86,7 @@ const LoginMasterScreen = ({ navigation, route }) => {
         });
 
         const empData = await empResponse.json();
+        console.log("empData.result", empData.result);
         
         if (empData.error) {
           Alert.alert('Error', empData.error.data.message || 'Failed to fetch employee data');

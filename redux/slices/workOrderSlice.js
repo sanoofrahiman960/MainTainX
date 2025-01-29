@@ -3,7 +3,6 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
     workOrders: [],
     workOrderViews: [],
-    currentView: null,
     loading: false,
     error: null,
 };
@@ -15,6 +14,10 @@ export const workOrderSlice = createSlice({
         addWorkOrder: (state, action) => {
             console.log("Redux - Adding work order:", action.payload);
             state.workOrders = [...state.workOrders, action.payload];
+        },
+        WorkOrder: (state, action) => {
+            console.log("work order:", action.payload);
+            state.workOrderViews = [...state.workOrderViews, action.payload];
         },
         updateWorkOrder: (state, action) => {
             const index = state.workOrders.findIndex(wo => wo.id === action.payload.id);
@@ -67,7 +70,9 @@ export const {
     setWorkOrderViews,
     setCurrentView, 
     setLoading, 
-    setError 
+    setError ,
+    WorkOrder,
+    
 } = workOrderSlice.actions;
 
 export default workOrderSlice.reducer;

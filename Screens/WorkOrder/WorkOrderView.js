@@ -1,26 +1,34 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, Text, ScrollView, Platform,ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { StyleSheet, View, FlatList, TouchableOpacity, Text, ScrollView, Platform, ActivityIndicator, Modal, Alert,TextInput } from 'react-native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { Card, Searchbar, IconButton, Menu, Divider, Badge, FAB } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSelector } from 'react-redux';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, startOfWeek, endOfWeek, isSameDay, isWithinInterval } from 'date-fns';
 import axios from 'axios';
-import { getData } from '../../Util/Storage';
+import { getData, getObjectData, storeData } from '../../Util/Storage';
 import { BASE_URL } from '../../Util/Const';
+import { useDispatch } from 'react-redux';
+import { WorkOrder } from '../../redux/slices/workOrderSlice';
+import { addWorkOrder } from '../../redux/slices/workOrderSlice';
+import { Calendar } from 'react-native-calendars';
+import Toast from 'react-native-simple-toast';
 
 export default function WorkOrderView() {
     const navigation = useNavigation();
+    const Focus = useIsFocused()
     const [workOrderData, setWorkOrderData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const locations = useSelector(state => state.location?.locations || []);
     const assets = useSelector(state => state.asset?.assets || []);
-
+    const dispatch = useDispatch();
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSearch, setShowSearch] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [filteredData, setFilteredData] = useState([]);
     const [showFilterMenu, setShowFilterMenu] = useState(false);
     const [filters, setFilters] = useState({
         dueDate: new Date(),
@@ -40,53 +48,157 @@ export default function WorkOrderView() {
     const [viewMode, setViewMode] = useState('month'); // 'month' or 'week'
     const [showCustomWeekPicker, setShowCustomWeekPicker] = useState(false);
     const [showCustomMonthPicker, setShowCustomMonthPicker] = useState(false);
+    const [markedDates, setMarkedDates] = useState({});
+
+    const handleDeleteWorkOrder = async (workOrderId) => {
+        try {
+            const Token = await getData("ACCESS_TOKEN");
+            const response = await fetch(`${BASE_URL}/web/dataset/call_kw`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cookie': `X-OpenERP=${Token}`,
+                },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    params: {
+                        model: "maintenance.request",
+                        method: "unlink",
+                        args: [[workOrderId]],
+                        kwargs: {}
+                    }
+                })
+            });
+
+            const data = await response.json();
+            console.log("Delete response:", data);
+
+            if (data.result === true) {
+                Toast.show('Work order deleted successfully');
+                // Refresh work orders using the fetchWorkOrders function
+                fetchWorkOrders();
+                return true;
+            } else {
+                Toast.show('Failed to delete work order');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error deleting work order:', error);
+            Toast.show('An error occurred while deleting the work order');
+            return false;
+        }
+    };
+
+    const confirmDelete = (workOrderId, event) => {
+        event.stopPropagation(); // Prevent navigation when clicking delete
+        Alert.alert(
+            "Delete Work Order",
+            "Are you sure you want to delete this work order?",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setLoading(true);
+                        const success = await handleDeleteWorkOrder(workOrderId);
+                        setLoading(false);
+                        if (success) {
+                            console.log("Work order deleted successfully");
+                        } else {
+                            console.log("Failed to delete work order");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const fetchWorkOrders = async () => {
+        const Data = await getObjectData("EMPLOYEE_DATA");
+        console.log("EMPLOYEE_DATA", Data?.id);
+        
+        try {
+            const Token = await getData("ACCESS_TOKEN");
+            const IDs = await getData("EMPLOYEE_ID");
+            const currentWorkOrders = await getData("CURRENT_WORK_ORDERS");
+            console.log("IDs", IDs, Token);
+
+            const empResponse = await fetch(`${BASE_URL}/web/dataset/call_kw`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cookie': `X-OpenERP=${Token}`,
+                },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    params: {
+                        "model": "maintenance.request",
+                        "method": "search_read",
+                        "args": [],
+                        "kwargs": {
+                            "fields": ["name", "priority", "stage_id", "due_date", "employee_ids", "contact_location_id", "partner_id", "description", "write_date"],
+                            "domain": [["employee_ids", "in", [Data?.id]]]
+                        }
+                    },
+                }),
+            });
+            const empData = await empResponse.json();
+            console.log("empData.result", empData.result);
+            
+            if (empData.result) {
+                const hasChanges = !currentWorkOrders || 
+                    empData.result.some((newOrder, index) => {
+                        const currentOrder = currentWorkOrders[index];
+                        return !currentOrder || currentOrder.write_date !== newOrder.write_date;
+                    });
+
+                if (hasChanges) {
+                    const sortedWorkOrders = sortWorkOrdersByDate(empData.result);
+                    setWorkOrderData(sortedWorkOrders);
+                    dispatch(addWorkOrder(sortedWorkOrders));
+                    processWorkOrderDates(sortedWorkOrders);
+                    await storeData("CURRENT_WORK_ORDERS", sortedWorkOrders);
+                }
+                setError(null);
+            } else {
+                setError('No data received from server');
+            }
+        } catch (err) {
+            console.error('Error fetching work orders:', err);
+            setError('Failed to fetch work orders');
+        }
+    };
 
     useEffect(() => {
-        const fetchWorkOrders = async () => {
-            setLoading(true);
-            try {
-                const Token = await getData("ACCESS_TOKEN");
-                const IDs = await getData("EMPLOYEE_ID");
-                console.log("IDs", IDs,Token);
-                const empResponse = await fetch(`${BASE_URL}/web/dataset/call_kw`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cookie': `X-OpenERP=${Token}`,
-                    },
-                    body: JSON.stringify({
-                        jsonrpc: '2.0',
-                        params: {
-                            "model": "maintenance.request",
-                            "method": "search_read",
-                            "args": [],
-                            "kwargs": {
-                                "fields": ["name", "priority", "stage_id", "due_date", "employee_ids", "contact_location_id", "partner_id"],
-                                "domain": [["employee_ids", "in", [17]]]
-                            }
-                        },
-                    }),
-                });
-                const empData = await empResponse.json();
-                console.log("empData.result", empData.result);
-                
-                if (empData.result) {
-                    setWorkOrderData(empData.result);
-                    // dispatch(addWorkOrder(empData.result));
-                    setError(null);
-                } else {
-                    setError('No data received from server');
-                }
-            } catch (err) {
-                console.error('Error fetching work orders:', err);
-                setError('Failed to fetch work orders');
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchWorkOrders();
-    }, []);
+    }, [Focus]);
+
+    const processWorkOrderDates = (workOrders) => {
+        const dates = {};
+        workOrders.forEach(order => {
+            if (order.due_date) {
+                const date = new Date(order.due_date).toISOString().split('T')[0];
+                dates[date] = {
+                    marked: true,
+                    dotColor: getStatusColor(order.stage_id?.[1]),
+                    selectedDotColor: '#fff'
+                };
+            }
+        });
+        setMarkedDates(dates);
+    };
+
+    const sortWorkOrdersByDate = (workOrders) => {
+        return [...workOrders].sort((a, b) => {
+            const dateA = new Date(a.due_date);
+            const dateB = new Date(b.due_date);
+            return dateB - dateA; // Sort in descending order (newest first)
+        });
+    };
 
     const handleDateChange = (event, date) => {
         setShowDatePicker(false);
@@ -103,12 +215,21 @@ export default function WorkOrderView() {
         }
     };
 
-    const handleDatePress = () => {
-        if (viewMode === 'week') {
-            setShowCustomWeekPicker(true);
-        } else {
-            setShowCustomMonthPicker(true);
-        }
+    const handleDatePress = (day) => {
+        const selected = new Date(day.timestamp);
+        setSelectedDate(selected);
+        
+        const filtered = workOrderData.filter(order => {
+            if (!order.due_date) return false;
+            const orderDate = new Date(order.due_date);
+            return (
+                orderDate.getFullYear() === selected.getFullYear() &&
+                orderDate.getMonth() === selected.getMonth() &&
+                orderDate.getDate() === selected.getDate()
+            );
+        });
+        
+        setFilteredData(filtered);
     };
 
     const handleWeekDateSelect = (date) => {
@@ -168,8 +289,6 @@ export default function WorkOrderView() {
         return format(selectedDate, 'MMM dd, yyyy');
     };
 
- 
-
     const getPriorityColor = (priority) => {
         switch (priority) {
             case 0:
@@ -201,7 +320,6 @@ export default function WorkOrderView() {
     };
 
     const getStatusColor = (status) => {
-        console.log("status", status);
         switch (status) {
             case 'New':
                 return '#4daae8'; // Blue
@@ -213,6 +331,22 @@ export default function WorkOrderView() {
                 return '#135233'; // Green
             default:
                 return '#757575'; // Grey
+        }
+    };
+
+    const getStatusColorNew = (status) => {
+        switch (status?.toLowerCase()) {
+          case 'in progress':
+            return '#2196F3';
+          case 'completed':
+          case 'done':
+            return '#4CAF50';
+          case 'pending':
+            return '#FFC107';
+          case 'cancelled':
+            return '#F44336';
+          default:
+            return '#757575';
         }
     };
 
@@ -235,53 +369,138 @@ export default function WorkOrderView() {
         setSelectedDate(new Date());
     };
 
-   
+    const handleSearch = (query) => {
+        setSearchQuery(query);
+        if (!query.trim()) {
+            setFilteredData(workOrderData);
+            return;
+        }
 
-    const renderWorkOrder = ({ item }) => (
-        <TouchableOpacity onPress={() => navigation.navigate('WorkOrderDetails', { workOrderId: item.id })}>
-            <Card style={styles.card} elevation={2}>
-                <Card.Content>
-                    <View style={styles.cardHeader}>
+        const searchTerms = query.toLowerCase().split(' ');
+        const filtered = workOrderData.filter(order => {
+            const searchableText = [
+                order.name,
+                order.partner_id && order.partner_id[1],
+                order.stage_id && order.stage_id[1],
+                order.priority && getPriorityText(order.priority)
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+            return searchTerms.every(term => searchableText.includes(term));
+        });
+
+        setFilteredData(filtered);
+    };
+
+    useEffect(() => {
+        if (workOrderData.length > 0) {
+            setFilteredData(workOrderData);
+        }
+    }, [workOrderData]);
+
+    const renderWorkOrder = ({ item }) => {
+        const formattedDate = new Date(item.due_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+
+        const getStatusColor = (status) => {
+            switch (status?.toLowerCase()) {
+              case 'in progress':
+                return '#2196F3';
+              case 'completed':
+              case 'done':
+                return '#4CAF50';
+              case 'pending':
+                return '#FFC107';
+              case 'cancelled':
+                return '#F44336';
+              default:
+                return '#757575';
+            }
+        };
+
+        const getPriorityStyle = (priority) => {
+            switch (priority) {
+              case '3':
+                return { backgroundColor: '#FFE5E5', color: '#D32F2F' };
+              case '2':
+                return { backgroundColor: '#FFF3E0', color: '#F57C00' };
+              case '1':
+                return { backgroundColor: '#E3F2FD', color: '#1976D2' };
+              default:
+                return { backgroundColor: '#F5F5F5', color: '#757575' };
+            }
+        };
+
+        const priorityStyle = getPriorityStyle(item.priority);
+        const statusColor = getStatusColorNew(item.stage_id?.[1]);
+
+        return (
+            <TouchableOpacity
+                style={styles.workOrderCard}
+                onPress={() => navigation.navigate('WorkOrderDetails', { workOrderId: item.id })}
+            >
+                <View style={styles.cardHeader}>
+                    <View style={styles.cardLeft}>
+                        <View style={styles.dateContainer}>
+                            <Text style={styles.dateMonth}>
+                                {new Date(item.due_date).toLocaleString('en-US', { month: 'short' })}
+                            </Text>
+                            <Text style={styles.dateDay}>
+                                {new Date(item.due_date).getDate()}
+                            </Text>
+                        </View>
                         <View style={styles.titleContainer}>
-                            <Text style={styles.title}>{item.name}</Text>
-                            <View style={styles.badgeContainer}>
-                                <Badge 
-                                    style={[styles.badge, { backgroundColor: getPriorityColor(parseInt(item.priority)) }]}
-                                >
-                                    {getPriorityText(parseInt(item.priority))}
-                                </Badge>
-                                <Badge 
-                                    style={[styles.badge, { backgroundColor: getStatusColor(item.stage_id[1]) }]}
-                                >
-                                    {item.stage_id[1]}
-                                </Badge>
-                            </View>
+                            <Text style={styles.workOrderTitle} numberOfLines={1}>
+                                {item.name}
+                            </Text>
+                            <Text style={styles.teamText} numberOfLines={1}>
+                                {item.maintenance_team_id ? item.maintenance_team_id[1] : 'No Team'}
+                            </Text>
                         </View>
                     </View>
-                    <View style={styles.cardContent}>
-                        {item.contact_location_id && (
-                            <View style={styles.infoRow}>
-                                <Icon name="map-marker" size={16} color="#666" />
-                                <Text style={styles.infoText}>{item.contact_location_id[1]}</Text>
-                            </View>
-                        )}
-                        {item.due_date && (
-                            <View style={styles.infoRow}>
-                                <Icon name="calendar" size={16} color="#666" />
-                                <Text style={styles.infoText}>{new Date(item.due_date).toLocaleDateString()}</Text>
-                            </View>
-                        )}
-                        {item.partner_id && (
-                            <View style={styles.infoRow}>
-                                <Icon name="account-group" size={16} color="#666" />
-                                <Text style={styles.infoText}>{item.partner_id[1]}</Text>
-                            </View>
-                        )}
+                    <View style={styles.cardRight}>
+                        <View style={[styles.priorityBadge, { backgroundColor: priorityStyle.backgroundColor }]}>
+                            <Text style={[styles.priorityText, { color: priorityStyle.color }]}>
+                                {item.priority === '3' ? 'High' : item.priority === '2' ? 'Medium' : 'Low'}
+                            </Text>
+                        </View>
+                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                        <IconButton
+                            icon="delete"
+                            iconColor="#FF0000"
+                            size={20}
+                            onPress={(e) => confirmDelete(item.id, e)}
+                            style={{ marginLeft: 8 }}
+                        />
                     </View>
-                </Card.Content>
-            </Card>
-        </TouchableOpacity>
-    );
+                </View>
+                <View style={styles.cardContent}>
+                    {item.description && (
+                        <Text style={styles.descriptionText} numberOfLines={2}>
+                            {item.description?.replace(/<p>/g, '').replace(/<\/p>/g, '')}
+                        </Text>
+                    )}
+                    <View style={styles.cardFooter}>
+                        {item.partner_id && (
+                            <Text style={styles.partnerText} numberOfLines={1}>
+                                Client: {item.partner_id[1]}
+                            </Text>
+                        )}
+                        <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15` }]}>
+                            <Text style={[styles.statusText, { color: statusColor }]}>
+                                {item.stage_id ? item.stage_id[1] : 'New'}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     const WeekPicker = () => {
         if (!showCustomWeekPicker) return null;
@@ -502,323 +721,159 @@ export default function WorkOrderView() {
         );
     };
 
+    const renderCalendar = () => {
+        const selectedDateStr = selectedDate ? 
+            new Date(selectedDate).toISOString().split('T')[0] : '';
+        
+        const markedDatesWithSelected = {
+            ...markedDates,
+            [selectedDateStr]: {
+                ...markedDates[selectedDateStr],
+                selected: true,
+                selectedColor: '#2196F3',
+            }
+        };
+
+        return (
+            <Calendar
+                style={styles.calendar}
+                markedDates={markedDatesWithSelected}
+                markingType="dot"
+                theme={{
+                    backgroundColor: '#ffffff',
+                    calendarBackground: '#ffffff',
+                    textSectionTitleColor: '#333',
+                    selectedDayBackgroundColor: '#2196F3',
+                    selectedDayTextColor: '#ffffff',
+                    todayTextColor: '#2196F3',
+                    dayTextColor: '#333',
+                    textDisabledColor: '#d9e1e8',
+                    dotColor: '#2196F3',
+                    selectedDotColor: '#ffffff',
+                    arrowColor: '#2196F3',
+                    monthTextColor: '#333',
+                    textDayFontWeight: '400',
+                    textMonthFontWeight: '600',
+                    textDayHeaderFontWeight: '500'
+                }}
+                onDayPress={handleDatePress}
+                enableSwipeMonths={true}
+            />
+        );
+    };
+
+    const renderHeader = () => (
+        <View style={styles.header}>
+          {showSearch ? (
+            <View style={styles.searchContainer}>
+              <Icon name="magnify" size={24} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search work orders..."
+                value={searchQuery}
+                onChangeText={handleSearch}
+                autoFocus
+              />
+              <TouchableOpacity onPress={() => {
+                setShowSearch(false);
+                setSearchQuery('');
+                setFilteredData(workOrderData);
+              }}>
+                <Icon name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.headerContent}>
+              <Text style={styles.headerTitle}>Work Orders</Text>
+              <View style={styles.headerIcons}>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => setShowSearch(true)}
+                >
+                  <Icon name="magnify" size={24} color="#666" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => navigation.navigate('WorkOrderCalendar')}
+                >
+                  <Icon name="calendar-month" size={24} color="#666" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => setShowFilterMenu(true)}
+                >
+                  <Icon name="filter-variant" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      );
+
     const renderContent = () => {
         if (loading) {
             return (
-                <View style={{flex:1, justifyContent:'center', alignItems:'center'}}>
-                    <ActivityIndicator size="large" color="#007AFF" />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#0000ff" />
                 </View>
             );
         }
 
         if (error) {
             return (
-                <View style={styles.container}>
-                    <Text>Error: {error}</Text>
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
                 </View>
             );
         }
 
+        const dataToDisplay = searchQuery ? filteredData : (selectedDate ? filteredData : workOrderData);
+
         return (
             <View style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity 
-                        style={styles.calendarButton}
-                        onPress={handleDatePress}
-                    >
-                        <Icon name="calendar" size={24} color="#007AFF" />
-                        <Text style={styles.calendarText}>
-                            {getDateRangeText()}
-                        </Text>
-                    </TouchableOpacity>
-
-                    <View style={{flex:1}}>
-                        <Searchbar
-                            placeholder="Search work orders..."
-                            onChangeText={setSearchQuery}
-                            value={searchQuery}
-                            style={styles.searchBar}
-                        />
-                    </View>
-
-                    <Menu
-                        visible={showFilterMenu}
-                        onDismiss={() => setShowFilterMenu(false)}
-                        anchor={
-                            <IconButton
-                                icon="filter"
-                                size={24}
-                                onPress={() => setShowFilterMenu(true)}
-                            />
-                        }
-                    >
-                        <Menu.Item 
-                            title="Due Date"
-                            onPress={() => setShowDatePicker(true)}
-                            leadingIcon="calendar"
-                        />
-                        <Divider />
-                        
-                        <Menu.Item 
-                            title="Status"
-                            leadingIcon="flag"
-                            onPress={() => setShowFilterMenu(false)}
-                        />
-                        <Menu.Item 
-                            onPress={() => {
-                                setFilters(prev => ({ ...prev, status: 'Open' }));
-                                setShowFilterMenu(false);
-                            }} 
-                            title="Open"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Menu.Item 
-                            onPress={() => {
-                                setFilters(prev => ({ ...prev, status: 'In Progress' }));
-                                setShowFilterMenu(false);
-                            }} 
-                            title="In Progress"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Menu.Item 
-                            onPress={() => {
-                                setFilters(prev => ({ ...prev, status: 'On Hold' }));
-                                setShowFilterMenu(false);
-                            }} 
-                            title="On Hold"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Menu.Item 
-                            onPress={() => {
-                                setFilters(prev => ({ ...prev, status: 'Completed' }));
-                                setShowFilterMenu(false);
-                            }} 
-                            title="Completed"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Priority"
-                            leadingIcon="alert-circle"
-                        />
-                        <Menu.Item 
-                            onPress={() => {
-                                setFilters(prev => ({ ...prev, priority: 2 }));
-                                setShowFilterMenu(false);
-                            }} 
-                            title="High Priority"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Menu.Item 
-                            onPress={() => {
-                                setFilters(prev => ({ ...prev, priority: 1 }));
-                                setShowFilterMenu(false);
-                            }} 
-                            title="Medium Priority"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Menu.Item 
-                            onPress={() => {
-                                setFilters(prev => ({ ...prev, priority: 0 }));
-                                setShowFilterMenu(false);
-                            }} 
-                            title="Low Priority"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Location"
-                            onPress={() => {
-                                // TODO: Show location picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="map-marker"
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Asset"
-                            onPress={() => {
-                                // TODO: Show asset picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="cube-outline"
-                        />
-                        <Menu.Item 
-                            title="Asset Type"
-                            onPress={() => {
-                                // TODO: Show asset type picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="cube-scan"
-                            style={{ paddingLeft: 30 }}
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Work Type"
-                            onPress={() => {
-                                // TODO: Show work type picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="wrench"
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Category"
-                            onPress={() => {
-                                // TODO: Show category picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="tag"
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Vendor"
-                            onPress={() => {
-                                // TODO: Show vendor picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="store"
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Part"
-                            onPress={() => {
-                                // TODO: Show part picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="cog"
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            title="Procedure"
-                            onPress={() => {
-                                // TODO: Show procedure picker
-                                setShowFilterMenu(false);
-                            }}
-                            leadingIcon="file-document"
-                        />
-                        <Divider />
-
-                        <Menu.Item 
-                            onPress={() => {
-                                clearFilters();
-                                setShowFilterMenu(false);
-                            }} 
-                            title="Clear All Filters"
-                            leadingIcon="filter-remove"
-                        />
-                    </Menu>
-                </View>
-
-                <View style={styles.viewToggleContainer}>
-                    <TouchableOpacity 
-                        style={[
-                            styles.toggleButton, 
-                            viewMode === 'month' && styles.toggleButtonActive
-                        ]}
-                        onPress={() => handleViewModeChange('month')}
-                    >
-                        <Icon 
-                            name="calendar-month" 
-                            size={20} 
-                            color={viewMode === 'month' ? 'white' : '#666'} 
-                        />
-                        <Text style={[
-                            styles.toggleText,
-                            viewMode === 'month' && styles.toggleTextActive
-                        ]}>Month View</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[
-                            styles.toggleButton,
-                            viewMode === 'week' && styles.toggleButtonActive
-                        ]}
-                        onPress={() => handleViewModeChange('week')}
-                    >
-                        <Icon 
-                            name="calendar-week" 
-                            size={20} 
-                            color={viewMode === 'week' ? 'white' : '#666'} 
-                        />
-                        <Text style={[
-                            styles.toggleText,
-                            viewMode === 'week' && styles.toggleTextActive
-                        ]}>Week View</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {viewMode === 'week' ? <WeekPicker /> : <MonthPicker />}
-                
-                {showDatePicker && (
-                    <DateTimePicker
-                        value={selectedDate}
-                        mode="date"
-                        display="default"
-                        onChange={handleDateChange}
-                    />
-                )}
-                
-                <FlatList
-                    data={workOrderData.filter(order => {
-                        // Search query filter
-                        const searchMatches = !searchQuery || 
-                            (order.name && order.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                            (order.contact_location_id && order.contact_location_id[1].toLowerCase().includes(searchQuery.toLowerCase())) ||
-                            (order.partner_id && order.partner_id[1].toLowerCase().includes(searchQuery.toLowerCase()));
-
-                        // Date filter
-                        let dateMatches = true;
-                        if (filters.dueDate && order.due_date) {
-                            const orderDueDate = new Date(order.due_date);
-                            const filterDate = new Date(filters.dueDate);
-                            
-                            dateMatches = (
-                                orderDueDate.getFullYear() === filterDate.getFullYear() &&
-                                orderDueDate.getMonth() === filterDate.getMonth() &&
-                                orderDueDate.getDate() === filterDate.getDate()
-                            );
-                        }
-
-                        // Status filter based on stage_id[1]
-                        const statusMatches = !filters.status || (
-                            (filters.status === 'New' && order.stage_id[1] === 'New') ||
-                            (filters.status === 'In Progress' && order.stage_id[1] === 'In Progress') ||
-                            (filters.status === 'On Hold' && order.stage_id[1] === 'On Hold') ||
-                            (filters.status === 'Done' && order.stage_id[1] === 'Done')
-                        );
-
-                        // Priority filter (converting string to number)
-                        const priorityMatches = !filters.priority || parseInt(order.priority) === filters.priority;
-
-                        // Location filter
-                        const locationMatches = !filters.location || 
-                            (order.contact_location_id && order.contact_location_id[0] === filters.location);
-
-                        // Partner/Vendor filter
-                        const vendorMatches = !filters.vendor || 
-                            (order.partner_id && order.partner_id[0] === filters.vendor);
-
-                        return dateMatches && searchMatches && statusMatches && 
-                               priorityMatches && locationMatches && vendorMatches;
-                    })}
-                    renderItem={renderWorkOrder}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={styles.listContainer}
-                />
-
+                {renderHeader()}
                 <FAB
                     icon="plus"
                     style={styles.fab}
-                    onPress={() => navigation.navigate('NewWorkOrder')}
+                    onPress={() => navigation.navigate('AddWorks')}
                 />
+                <ScrollView style={styles.scrollView}>
+                    {renderCalendar()}
+                    <View style={styles.listContainer}>
+                        {selectedDate && (
+                            <View style={styles.selectedDateContainer}>
+                                <Text style={styles.selectedDateText}>
+                                    Work Orders for {new Date(selectedDate).toLocaleDateString()}
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.clearFilterButton}
+                                    onPress={() => {
+                                        setSelectedDate(null);
+                                        setFilteredData([]);
+                                        setSearchQuery('');
+                                    }}
+                                >
+                                    <Text style={styles.clearFilterText}>Clear Filter</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        {dataToDisplay.length === 0 ? (
+                            <Text style={styles.noDataText}>
+                                {searchQuery 
+                                    ? 'No matching work orders found'
+                                    : selectedDate 
+                                        ? 'No work orders for this date' 
+                                        : 'No work orders found'}
+                            </Text>
+                        ) : (
+                            dataToDisplay.map((item, index) => (
+                                <View key={index}>
+                                    {renderWorkOrder({ item })}
+                                </View>
+                            ))
+                        )}
+                    </View>
+                </ScrollView>
             </View>
         );
     };
@@ -831,124 +886,128 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f5f5f5',
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-    },
-    calendarButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    calendarText: {
-        marginLeft: 4,
-        color: '#007AFF',
-    },
-    searchBar: {
+    scrollView: {
         flex: 1,
-        marginRight: 8,
-        height: 40,
-        backgroundColor: '#f5f5f5',justifyContent: 'center',alignItems: 'center',alignSelf: 'center',
     },
     listContainer: {
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingBottom: 80, // Space for FAB
     },
-    card: {
+    calendar: {
         marginBottom: 16,
+        borderRadius: 12,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
         backgroundColor: '#fff',
+        padding: 8,
+        marginHorizontal: 16,
+        marginTop: 16,
+    },
+    workOrderCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 8,
+    },
+    cardLeft: {
+        flexDirection: 'row',
+        flex: 1,
+    },
+    dateContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F5F5F5',
+        borderRadius: 8,
+        padding: 8,
+        marginRight: 12,
+        minWidth: 48,
+    },
+    dateMonth: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#666',
+        textTransform: 'uppercase',
+    },
+    dateDay: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#333',
+        marginTop: 2,
     },
     titleContainer: {
         flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginRight: 8,
-    },
-    badgeContainer: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    badge: {
-        alignSelf: 'center',
-        paddingHorizontal: 12,
-    },
-    dueDate: {
-        fontSize: 12,
-        color: '#666',
-    },
-    description: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 8,
-    },
-    detailsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    detail: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f5f5f5',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-    },
-    detailText: {
-        fontSize: 12,
-        color: '#666',
-        marginLeft: 4,
-    },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 0,
-        bottom: 0,
-        backgroundColor: '#007AFF',
-    },
-    viewToggleContainer: {
-        flexDirection: 'row',
-        padding: 8,
-        backgroundColor: '#f5f5f5',
-        marginHorizontal: 16,
-        marginTop: 8,
-        borderRadius: 8,
-        justifyContent: 'space-between',
-    },
-    toggleButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 6,
-        flex: 1,
-        marginHorizontal: 4,
         justifyContent: 'center',
     },
-    toggleButtonActive: {
-        backgroundColor: '#2196F3',
+    workOrderTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 4,
     },
-    toggleText: {
-        marginLeft: 8,
+    teamText: {
+        fontSize: 13,
+        color: '#666',
+    },
+    cardRight: {
+        alignItems: 'flex-end',
+    },
+    priorityBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        marginBottom: 8,
+    },
+    priorityText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    cardContent: {
+        marginTop: 12,
+    },
+    descriptionText: {
         fontSize: 14,
         color: '#666',
-        fontWeight: '500',
+        marginBottom: 12,
+        lineHeight: 20,
     },
-    toggleTextActive: {
-        color: 'white',
+    cardFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    partnerText: {
+        fontSize: 13,
+        color: '#666',
+        flex: 1,
+        marginRight: 8,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     weekPickerContainer: {
         position: 'absolute',
@@ -1082,17 +1141,94 @@ const styles = StyleSheet.create({
         color: '#666',
         fontWeight: '600',
     },
-    cardContent: {
-        padding: 8,
+    fab: {
+        position: 'absolute',
+        margin: 16,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#2196F3',
+        zIndex: 1,
     },
-    infoRow: {
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorText: {
+        color: 'red',
+        textAlign: 'center',
+    },
+    noDataText: {
+        textAlign: 'center',
+        color: '#666',
+        marginTop: 20,
+        fontSize: 16,
+    },
+    selectedDateContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        marginBottom: 16,
+    },
+    selectedDateText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
+    clearFilterButton: {
+        padding: 8,
+        backgroundColor: '#f5f5f5',
+        borderRadius: 6,
+    },
+    clearFilterText: {
+        color: '#2196F3',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    header: {
+        backgroundColor: '#fff',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    headerIcons: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
     },
-    infoText: {
-        fontSize: 14,
-        color: '#666',
-        marginLeft: 4,
+    iconButton: {
+        padding: 8,
+        marginLeft: 8,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        padding: 8,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#333',
     },
 });

@@ -7,11 +7,12 @@ import workOrderReducer from './slices/workOrderSlice';
 import authReducer from './reducers/authReducer';
 import vendorReducer from './slices/vendorSlice';
 import partReducer from './slices/partSlice';
+import partQuantityReducer from './slices/partQuantitySlice';
 
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['location', 'asset', 'workOrder'], 
+  whitelist: ['location', 'asset', 'workOrder', 'partQuantity'], 
 };
 
 const rootReducer = combineReducers({
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   auth: authReducer,
   vendor: vendorReducer,
   part: partReducer,
+  partQuantity: partQuantityReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

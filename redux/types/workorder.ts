@@ -1,52 +1,45 @@
-export interface Worker {
-  id: string;
-  name: string;
-  role: string;
-}
-
 export interface WorkOrder {
-  id: string;
-  task: string;
-  description?: string;
-  priorityIndex: number;
-  estimatedTime: string;
-  attachments?: string[];
-  workType?: string;
-  assignedTo?: string;
-  location?: string;
-  asset?: string;
-  categories?: string[];
-  vendors?: string[];
-  startDate: string;
-  dueDate: string;
-  status: string;
-  recurrence?: {
-    type: string;
-    interval: number;
-    selectedDays?: string[];
-    monthDay?: number;
-    endDate: string;
+  id: number;
+  name: string;
+  priority: string;
+  stage_id: [number, string];
+  due_date: string | false;
+  employee_ids: number[];
+  contact_location_id: [number, string] | false;
+  partner_id: [number, string] | false;
+  laborTime?: {
+    hours: number;
+    minutes: number;
   };
-  createdAt: string;
-  updatedAt: string;
+  materialCost?: number;
+  lastUpdated?: string;
 }
 
 export interface WorkOrderState {
   workOrders: WorkOrder[];
+  workOrderViews: WorkOrder[];
   loading: boolean;
   error: string | null;
+  currentView?: WorkOrder | null;
 }
 
 // Action Types
 export const ADD_WORKORDER = 'ADD_WORKORDER';
+export const WORKORDER = 'WORKORDER';
 export const UPDATE_WORKORDER = 'UPDATE_WORKORDER';
 export const DELETE_WORKORDER = 'DELETE_WORKORDER';
 export const SET_WORKORDER_LOADING = 'SET_WORKORDER_LOADING';
 export const SET_WORKORDER_ERROR = 'SET_WORKORDER_ERROR';
+export const ADD_WORKORDER_VIEW = 'ADD_WORKORDER_VIEW';
 
 // Action Interfaces
 export interface AddWorkOrderAction {
   type: typeof ADD_WORKORDER;
+  payload: WorkOrder;
+}
+
+export interface WorkOrderAction {
+  type: typeof WORKORDER;
   payload: WorkOrder;
 }
 
@@ -57,7 +50,7 @@ export interface UpdateWorkOrderAction {
 
 export interface DeleteWorkOrderAction {
   type: typeof DELETE_WORKORDER;
-  payload: string; // workorder id
+  payload: number;
 }
 
 export interface SetWorkOrderLoadingAction {
@@ -70,9 +63,16 @@ export interface SetWorkOrderErrorAction {
   payload: string;
 }
 
-export type WorkOrderActionTypes =
+export interface AddWorkOrderViewAction {
+  type: typeof ADD_WORKORDER_VIEW;
+  payload: WorkOrder;
+}
+
+export type WorkOrderActionTypes = 
   | AddWorkOrderAction
+  | WorkOrderAction
   | UpdateWorkOrderAction
   | DeleteWorkOrderAction
   | SetWorkOrderLoadingAction
-  | SetWorkOrderErrorAction;
+  | SetWorkOrderErrorAction
+  | AddWorkOrderViewAction;
